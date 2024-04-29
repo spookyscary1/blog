@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Rop on spook&#39;s blog</title>
+    <link>http://localhost:1313/series/rop/</link>
+    <description>Recent content in Rop on spook&#39;s blog</description>
+    <generator>Hugo</generator>
+    <language>en</language>
+    <copyright>&lt;a href=&#34;https://creativecommons.org/licenses/by-nc/4.0/&#34; target=&#34;_blank&#34; rel=&#34;noopener&#34;&gt;CC BY-NC 4.0&lt;/a&gt;</copyright>
+    <lastBuildDate>Wed, 25 May 2022 00:00:00 +0000</lastBuildDate>
+    <atom:link href="http://localhost:1313/series/rop/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Rop writeups ret2win-write41</title>
+      <link>http://localhost:1313/posts/rop1/</link>
+      <pubDate>Wed, 25 May 2022 00:00:00 +0000</pubDate>
+      <guid>http://localhost:1313/posts/rop1/</guid>
+      <description>While attempting to solve a CTF for a job interview, I learned the basics of crafting return-oriented programming exploits. This knowledge inspired me to create a write up for a few challenges that involve ROP from ROP Emporium.&#xA;introduction to Rop Return-oriented programming can be thought of as an advanced form of buffer overflow. The basic buffer overflow involves gaining control of the instruction pointer and then pointing it to shellcode code added to the stack.</description>
+    </item>
+  </channel>
+</rss>

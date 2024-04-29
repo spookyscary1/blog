@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Links on spook&#39;s blog</title>
+    <link>http://localhost:1313/series/links/</link>
+    <description>Recent content in Links on spook&#39;s blog</description>
+    <generator>Hugo</generator>
+    <language>en</language>
+    <copyright>&lt;a href=&#34;https://creativecommons.org/licenses/by-nc/4.0/&#34; target=&#34;_blank&#34; rel=&#34;noopener&#34;&gt;CC BY-NC 4.0&lt;/a&gt;</copyright>
+    <lastBuildDate>Fri, 27 May 2022 00:00:00 +0000</lastBuildDate>
+    <atom:link href="http://localhost:1313/series/links/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>random links 1</title>
+      <link>http://localhost:1313/posts/links-1/</link>
+      <pubDate>Fri, 27 May 2022 00:00:00 +0000</pubDate>
+      <guid>http://localhost:1313/posts/links-1/</guid>
+      <description>Collections of random cool links I&amp;rsquo;ve stumbled across.&#xA;Kerberosity Killed the Domain: An Offensive Kerberos Overview: Kerebos authenication is hard to understand, but this article is easy to read. It features very pretty pictures and is easy to understand. It is a good read for anyone looking to understand kerberos related offensive security techniques.&#xA;How Developers Stop Learning: Rise of the Expert Beginner: A blog post that explains how some people can lose the will to keep learning.</description>
+    </item>
+  </channel>
+</rss>

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Tool Touch Up on spook&#39;s blog</title>
+    <link>http://localhost:1313/series/tool-touch-up/</link>
+    <description>Recent content in Tool Touch Up on spook&#39;s blog</description>
+    <generator>Hugo</generator>
+    <language>en</language>
+    <copyright>&lt;a href=&#34;https://creativecommons.org/licenses/by-nc/4.0/&#34; target=&#34;_blank&#34; rel=&#34;noopener&#34;&gt;CC BY-NC 4.0&lt;/a&gt;</copyright>
+    <lastBuildDate>Wed, 22 Jun 2022 00:00:00 +0000</lastBuildDate>
+    <atom:link href="http://localhost:1313/series/tool-touch-up/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Tool touch up : web content scanner 1</title>
+      <link>http://localhost:1313/posts/web-content-scanner/</link>
+      <pubDate>Wed, 22 Jun 2022 00:00:00 +0000</pubDate>
+      <guid>http://localhost:1313/posts/web-content-scanner/</guid>
+      <description>I noticed the web content scanner I wrote in go for this blog post does not work on websites using HTTPS when the TLS certificate cannot be validated. I decide to make some improvement to the code and generally refactor it. I initially wanted to add a flag to skip validating SSL/ TLS certificates. After mulling that over for a bit, I decided that adding a flag was not needed. Skipping the validating of certs can be the default behavior.</description>
+    </item>
+  </channel>
+</rss>
