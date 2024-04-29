@@ -2,18 +2,18 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
     <title>Write Ups on spook&#39;s blog</title>
-    <link>http://localhost:1313/series/write-ups/</link>
+    <link>http://localhost:20481/series/write-ups/</link>
     <description>Recent content in Write Ups on spook&#39;s blog</description>
     <generator>Hugo</generator>
     <language>en</language>
     <copyright>&lt;a href=&#34;https://creativecommons.org/licenses/by-nc/4.0/&#34; target=&#34;_blank&#34; rel=&#34;noopener&#34;&gt;CC BY-NC 4.0&lt;/a&gt;</copyright>
     <lastBuildDate>Sun, 15 May 2022 00:00:00 +0000</lastBuildDate>
-    <atom:link href="http://localhost:1313/series/write-ups/index.xml" rel="self" type="application/rss+xml" />
+    <atom:link href="http://localhost:20481/series/write-ups/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>Dawn writeup but with slightly more programming</title>
-      <link>http://localhost:1313/posts/first/</link>
+      <link>http://localhost:20481/posts/first/</link>
       <pubDate>Sun, 15 May 2022 00:00:00 +0000</pubDate>
-      <guid>http://localhost:1313/posts/first/</guid>
+      <guid>http://localhost:20481/posts/first/</guid>
       <description>intro / rules Welcome to the first of hopefully a series of blog posts. The goal of&#xA;this post is to explain the rules of the challenge I have created for&#xA;myself. The goal is to solve Boot2Root style VMs while writing as many&#xA;custom tools as possible. There are a few categories of tools that I&#xA;have semi arbitrarily declared safe for use during the challenge. These&#xA;tools include the following:</description>
     </item>
   </channel>

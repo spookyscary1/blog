@@ -2,53 +2,53 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
-    <loc>http://localhost:1313/posts/chip8/</loc>
+    <loc>http://localhost:20481/posts/chip8/</loc>
     <lastmod>2024-04-26T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>http://localhost:1313/posts/web-content-scanner/</loc>
+    <loc>http://localhost:20481/posts/web-content-scanner/</loc>
     <lastmod>2022-06-22T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>http://localhost:1313/posts/crto-review/</loc>
+    <loc>http://localhost:20481/posts/crto-review/</loc>
     <lastmod>2022-06-06T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>http://localhost:1313/posts/links-1/</loc>
+    <loc>http://localhost:20481/posts/links-1/</loc>
     <lastmod>2022-05-27T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>http://localhost:1313/posts/rop1/</loc>
+    <loc>http://localhost:20481/posts/rop1/</loc>
     <lastmod>2022-05-25T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>http://localhost:1313/posts/first/</loc>
+    <loc>http://localhost:20481/posts/first/</loc>
     <lastmod>2022-05-15T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>http://localhost:1313/posts/</loc>
+    <loc>http://localhost:20481/posts/</loc>
     <lastmod>2024-04-26T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>http://localhost:1313/</loc>
+    <loc>http://localhost:20481/</loc>
     <lastmod>2024-04-26T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>http://localhost:1313/series/</loc>
+    <loc>http://localhost:20481/series/</loc>
     <lastmod>2022-06-22T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>http://localhost:1313/series/tool-touch-up/</loc>
+    <loc>http://localhost:20481/series/tool-touch-up/</loc>
     <lastmod>2022-06-22T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>http://localhost:1313/series/reviews/</loc>
+    <loc>http://localhost:20481/series/reviews/</loc>
     <lastmod>2022-06-06T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>http://localhost:1313/series/links/</loc>
+    <loc>http://localhost:20481/series/links/</loc>
     <lastmod>2022-05-27T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>http://localhost:1313/series/rop/</loc>
+    <loc>http://localhost:20481/series/rop/</loc>
     <lastmod>2022-05-25T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>http://localhost:1313/about/</loc>
+    <loc>http://localhost:20481/about/</loc>
     <lastmod>2022-05-17T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>http://localhost:1313/series/write-ups/</loc>
+    <loc>http://localhost:20481/series/write-ups/</loc>
     <lastmod>2022-05-15T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>http://localhost:1313/blog/</loc>
+    <loc>http://localhost:20481/blog/</loc>
   </url><url>
-    <loc>http://localhost:1313/tags/</loc>
+    <loc>http://localhost:20481/tags/</loc>
   </url>
 </urlset>

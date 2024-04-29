@@ -2,18 +2,18 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
     <title>Reviews on spook&#39;s blog</title>
-    <link>http://localhost:1313/series/reviews/</link>
+    <link>http://localhost:20481/series/reviews/</link>
     <description>Recent content in Reviews on spook&#39;s blog</description>
     <generator>Hugo</generator>
     <language>en</language>
     <copyright>&lt;a href=&#34;https://creativecommons.org/licenses/by-nc/4.0/&#34; target=&#34;_blank&#34; rel=&#34;noopener&#34;&gt;CC BY-NC 4.0&lt;/a&gt;</copyright>
     <lastBuildDate>Mon, 06 Jun 2022 00:00:00 +0000</lastBuildDate>
-    <atom:link href="http://localhost:1313/series/reviews/index.xml" rel="self" type="application/rss+xml" />
+    <atom:link href="http://localhost:20481/series/reviews/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>CRTO review</title>
-      <link>http://localhost:1313/posts/crto-review/</link>
+      <link>http://localhost:20481/posts/crto-review/</link>
       <pubDate>Mon, 06 Jun 2022 00:00:00 +0000</pubDate>
-      <guid>http://localhost:1313/posts/crto-review/</guid>
+      <guid>http://localhost:20481/posts/crto-review/</guid>
       <description>intro I recently passed the Red Team Ops course by Zero-Point Security. I picked up the course while it was on sale. It seemed like an affordable course that would build upon the knowledge learned while acquiring my OSCP. I completed the exam recently and thought writing a brief review would be nice. Red Team Ops is a course by Zero-Point Security that focuses on teaching &amp;ldquo;the basic principles, tools and techniques, that are synonymous with red teaming.</description>
     </item>
   </channel>

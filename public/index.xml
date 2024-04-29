@@ -2,60 +2,60 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
     <title>spook&#39;s blog</title>
-    <link>http://localhost:1313/</link>
+    <link>http://localhost:20481/</link>
     <description>Recent content on spook&#39;s blog</description>
     <generator>Hugo</generator>
     <language>en</language>
     <copyright>&lt;a href=&#34;https://creativecommons.org/licenses/by-nc/4.0/&#34; target=&#34;_blank&#34; rel=&#34;noopener&#34;&gt;CC BY-NC 4.0&lt;/a&gt;</copyright>
     <lastBuildDate>Fri, 26 Apr 2024 00:00:00 +0000</lastBuildDate>
-    <atom:link href="http://localhost:1313/index.xml" rel="self" type="application/rss+xml" />
+    <atom:link href="http://localhost:20481/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>Writing a Chip-8 Emulator</title>
-      <link>http://localhost:1313/posts/chip8/</link>
+      <link>http://localhost:20481/posts/chip8/</link>
       <pubDate>Fri, 26 Apr 2024 00:00:00 +0000</pubDate>
-      <guid>http://localhost:1313/posts/chip8/</guid>
+      <guid>http://localhost:20481/posts/chip8/</guid>
       <description>Emulators were a staple of my childhood. I played a variety of classic games on emulators to pass the time. I have always wondered what went into creating an emulator. Research led me to discover that CHIP-8 was an easy platform to develop an emulator for. Further research led me to discover a program that ran CHIP-8 binaries would technically be an interpreter and not an emulator since CHIP-8 programs were run on a virtual machine and not hardware.</description>
     </item>
     <item>
       <title>Tool touch up : web content scanner 1</title>
-      <link>http://localhost:1313/posts/web-content-scanner/</link>
+      <link>http://localhost:20481/posts/web-content-scanner/</link>
       <pubDate>Wed, 22 Jun 2022 00:00:00 +0000</pubDate>
-      <guid>http://localhost:1313/posts/web-content-scanner/</guid>
+      <guid>http://localhost:20481/posts/web-content-scanner/</guid>
       <description>I noticed the web content scanner I wrote in go for this blog post does not work on websites using HTTPS when the TLS certificate cannot be validated. I decide to make some improvement to the code and generally refactor it. I initially wanted to add a flag to skip validating SSL/ TLS certificates. After mulling that over for a bit, I decided that adding a flag was not needed. Skipping the validating of certs can be the default behavior.</description>
     </item>
     <item>
       <title>CRTO review</title>
-      <link>http://localhost:1313/posts/crto-review/</link>
+      <link>http://localhost:20481/posts/crto-review/</link>
       <pubDate>Mon, 06 Jun 2022 00:00:00 +0000</pubDate>
-      <guid>http://localhost:1313/posts/crto-review/</guid>
+      <guid>http://localhost:20481/posts/crto-review/</guid>
       <description>intro I recently passed the Red Team Ops course by Zero-Point Security. I picked up the course while it was on sale. It seemed like an affordable course that would build upon the knowledge learned while acquiring my OSCP. I completed the exam recently and thought writing a brief review would be nice. Red Team Ops is a course by Zero-Point Security that focuses on teaching &amp;ldquo;the basic principles, tools and techniques, that are synonymous with red teaming.</description>
     </item>
     <item>
       <title>random links 1</title>
-      <link>http://localhost:1313/posts/links-1/</link>
+      <link>http://localhost:20481/posts/links-1/</link>
       <pubDate>Fri, 27 May 2022 00:00:00 +0000</pubDate>
-      <guid>http://localhost:1313/posts/links-1/</guid>
+      <guid>http://localhost:20481/posts/links-1/</guid>
       <description>Collections of random cool links I&amp;rsquo;ve stumbled across.&#xA;Kerberosity Killed the Domain: An Offensive Kerberos Overview: Kerebos authenication is hard to understand, but this article is easy to read. It features very pretty pictures and is easy to understand. It is a good read for anyone looking to understand kerberos related offensive security techniques.&#xA;How Developers Stop Learning: Rise of the Expert Beginner: A blog post that explains how some people can lose the will to keep learning.</description>
     </item>
     <item>
       <title>Rop writeups ret2win-write41</title>
-      <link>http://localhost:1313/posts/rop1/</link>
+      <link>http://localhost:20481/posts/rop1/</link>
       <pubDate>Wed, 25 May 2022 00:00:00 +0000</pubDate>
-      <guid>http://localhost:1313/posts/rop1/</guid>
+      <guid>http://localhost:20481/posts/rop1/</guid>
       <description>While attempting to solve a CTF for a job interview, I learned the basics of crafting return-oriented programming exploits. This knowledge inspired me to create a write up for a few challenges that involve ROP from ROP Emporium.&#xA;introduction to Rop Return-oriented programming can be thought of as an advanced form of buffer overflow. The basic buffer overflow involves gaining control of the instruction pointer and then pointing it to shellcode code added to the stack.</description>
     </item>
     <item>
       <title>Dawn writeup but with slightly more programming</title>
-      <link>http://localhost:1313/posts/first/</link>
+      <link>http://localhost:20481/posts/first/</link>
       <pubDate>Sun, 15 May 2022 00:00:00 +0000</pubDate>
-      <guid>http://localhost:1313/posts/first/</guid>
+      <guid>http://localhost:20481/posts/first/</guid>
       <description>intro / rules Welcome to the first of hopefully a series of blog posts. The goal of&#xA;this post is to explain the rules of the challenge I have created for&#xA;myself. The goal is to solve Boot2Root style VMs while writing as many&#xA;custom tools as possible. There are a few categories of tools that I&#xA;have semi arbitrarily declared safe for use during the challenge. These&#xA;tools include the following:</description>
     </item>
     <item>
       <title>About</title>
-      <link>http://localhost:1313/about/</link>
+      <link>http://localhost:20481/about/</link>
       <pubDate>Tue, 17 May 2022 00:00:00 +0000</pubDate>
-      <guid>http://localhost:1313/about/</guid>
+      <guid>http://localhost:20481/about/</guid>
       <description>I recently graduated with a bachelor&amp;rsquo;s degree in Cyber Operations. I am OSCP certified and currently looking to become a penetration tester. This blog is a place where I will document things I have learned as I attempt to enter the field.</description>
     </item>
   </channel>

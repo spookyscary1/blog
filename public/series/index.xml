@@ -2,46 +2,46 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
     <title>Series on spook&#39;s blog</title>
-    <link>http://localhost:1313/series/</link>
+    <link>http://localhost:20481/series/</link>
     <description>Recent content in Series on spook&#39;s blog</description>
     <generator>Hugo</generator>
     <language>en</language>
     <copyright>&lt;a href=&#34;https://creativecommons.org/licenses/by-nc/4.0/&#34; target=&#34;_blank&#34; rel=&#34;noopener&#34;&gt;CC BY-NC 4.0&lt;/a&gt;</copyright>
     <lastBuildDate>Wed, 22 Jun 2022 00:00:00 +0000</lastBuildDate>
-    <atom:link href="http://localhost:1313/series/index.xml" rel="self" type="application/rss+xml" />
+    <atom:link href="http://localhost:20481/series/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>Tool Touch Up</title>
-      <link>http://localhost:1313/series/tool-touch-up/</link>
+      <link>http://localhost:20481/series/tool-touch-up/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
-      <guid>http://localhost:1313/series/tool-touch-up/</guid>
+      <guid>http://localhost:20481/series/tool-touch-up/</guid>
       <description></description>
     </item>
     <item>
       <title>Reviews</title>
-      <link>http://localhost:1313/series/reviews/</link>
+      <link>http://localhost:20481/series/reviews/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
-      <guid>http://localhost:1313/series/reviews/</guid>
+      <guid>http://localhost:20481/series/reviews/</guid>
       <description></description>
     </item>
     <item>
       <title>Links</title>
-      <link>http://localhost:1313/series/links/</link>
+      <link>http://localhost:20481/series/links/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
-      <guid>http://localhost:1313/series/links/</guid>
+      <guid>http://localhost:20481/series/links/</guid>
       <description></description>
     </item>
     <item>
       <title>Rop</title>
-      <link>http://localhost:1313/series/rop/</link>
+      <link>http://localhost:20481/series/rop/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
-      <guid>http://localhost:1313/series/rop/</guid>
+      <guid>http://localhost:20481/series/rop/</guid>
       <description></description>
     </item>
     <item>
       <title>Write Ups</title>
-      <link>http://localhost:1313/series/write-ups/</link>
+      <link>http://localhost:20481/series/write-ups/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
-      <guid>http://localhost:1313/series/write-ups/</guid>
+      <guid>http://localhost:20481/series/write-ups/</guid>
       <description></description>
     </item>
   </channel>

@@ -32,7 +32,13 @@ paginate     = 10
     category = "blog"
     tag      = "tags"
     series   = "series"
+  [[params.social]]
+    name = "email"
+    url  = "mailto:blog@spook.pw"
 
+[[params.social]]
+  name = "github"
+  url  = "https://github.com/spookyscary1"
 [languages]
   [languages.en]
     title = "spook's blog"
